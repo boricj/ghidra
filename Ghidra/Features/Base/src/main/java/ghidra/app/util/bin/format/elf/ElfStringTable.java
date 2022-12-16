@@ -48,6 +48,19 @@ public class ElfStringTable implements ElfFileSection {
 	}
 
 	/**
+	 * Construct an empty Elf string table
+	 * @param header elf header
+	 * @param stringTableSection string table section header or null if associated with a dynamic table entry
+	 */
+	public ElfStringTable(ElfHeader header, ElfSectionHeader stringTableSection) {
+		this.header = header;
+		this.stringTableSection = stringTableSection;
+		this.fileOffset = 0;
+		this.addrOffset = 0;
+		this.length = 0;
+	}
+
+	/**
 	 * Read string from table at specified relative table offset
 	 * @param reader byte reader
 	 * @param stringOffset table relative string offset

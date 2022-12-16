@@ -113,6 +113,45 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
+	 * Construct an empty <code>ElfHeader</code>
+	 * @throws ElfException
+	 */
+	public ElfHeader(byte e_ident_class, byte e_ident_data, byte e_ident_version, byte e_ident_osabi, byte e_ident_abiversion, short e_type, short e_machine, int e_version, long e_entry, int e_flags) throws ElfException {
+		this.e_ident_magic_num = 0x7F;
+		this.e_ident_magic_str = "ELF";
+		this.e_ident_class = e_ident_class;
+		this.e_ident_data = e_ident_data;
+		this.e_ident_version = e_ident_version;
+		this.e_ident_osabi = e_ident_osabi;
+		this.e_ident_abiversion = e_ident_abiversion;
+		this.e_ident_pad = new byte[PAD_LENGTH];
+		this.e_type = e_type;
+		this.e_machine = e_machine;
+		this.e_version = e_version;
+		this.e_entry = e_entry;
+		this.e_flags = e_flags;
+		this.e_phoff = 0;
+		this.e_shoff = 0;
+
+		this.e_ehsize = (short) (is32Bit() ? 52 : 64);
+		this.e_phentsize = (short) (is32Bit() ? 32 : 56);
+		this.e_phnum = 0;
+		this.e_shentsize = (short) (is32Bit() ? 40 : 64);
+		this.e_shnum = 0;
+		this.e_shstrndx = 1;
+
+		determineHeaderEndianess(e_ident_data);
+
+		ElfSectionHeader nullSection = new ElfSectionHeader(this, "SECTION0", 0x0, ElfSectionHeaderConstants.SHT_NULL);
+		nullSection.setSize(0);
+		addSection(nullSection);
+
+		ElfSectionHeader shstrtabSection = new ElfSectionHeader(this, ".shstrtab", 0x1, ElfSectionHeaderConstants.SHT_STRTAB);
+		shstrtabSection.setData(new byte[]{ '\0', '.', 's', 'h', 's', 't', 'r', 't', 'a', 'b', '\0' });
+		addSection(shstrtabSection);
+	}
+
+	/**
 	 * Returns the unconstrained binary reader (i.e., reads beyond EOF
 	 * will return 0-bytes).
 	 * @return the binary reader
@@ -2039,6 +2078,42 @@ public class ElfHeader implements StructConverter, Writeable {
 		ElfSectionHeader newSection = new ElfSectionHeader(this, name, sh_name, type);
 		addSection(newSection);
 		return newSection;
+	}
+
+	/**
+	 * Adds a new string section with the specifed name and name index.
+	 * @param name the actual name of the new section
+	 * @param sh_name the byte index into the string table where the name begins
+	 * @return the newly created string table
+	 */
+	public ElfStringTable addStringTable(String name, int sh_name) {
+		ElfSectionHeader newSection = new ElfSectionHeader(this, name, sh_name, ElfSectionHeaderConstants.SHT_STRTAB);
+		addSection(newSection);
+
+		ElfStringTable newStringTable = new ElfStringTable(this, newSection);
+		ArrayList<ElfStringTable> stringTableList = new ArrayList<>(Arrays.asList(newStringTable));
+		stringTableList.add(newStringTable);
+		stringTables = (ElfStringTable[]) stringTableList.toArray(new ElfStringTable[0]);
+
+		return newStringTable;
+	}
+
+	/**
+	 * Adds a new symbol section with the specifed name and name index.
+	 * @param name the actual name of the new section
+	 * @param sh_name the byte index into the string table where the name begins
+	 * @return the newly created symbol table
+	 */
+	public ElfSymbolTable addSymbolTable(String name, int sh_name, int type, ElfStringTable stringTable) {
+		ElfSectionHeader newSection = new ElfSectionHeader(this, name, sh_name, type);
+		addSection(newSection);
+
+		ElfSymbolTable newSymbolTable = new ElfSymbolTable(this, newSection, stringTable);
+		ArrayList<ElfSymbolTable> symbolTableList = new ArrayList<>(Arrays.asList(symbolTables));
+		symbolTableList.add(newSymbolTable);
+		symbolTables = (ElfSymbolTable[]) symbolTableList.toArray(new ElfSymbolTable[0]);
+
+		return newSymbolTable;
 	}
 
 	/**

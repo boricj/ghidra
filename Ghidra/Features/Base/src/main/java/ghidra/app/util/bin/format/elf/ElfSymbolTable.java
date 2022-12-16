@@ -111,6 +111,28 @@ public class ElfSymbolTable implements ElfFileSection, ByteArrayConverter {
 	}
 
 	/**
+	 * Construct an empty Elf symbol table
+	 * @param header elf header
+	 * @param symbolTableSection string table section header or null if associated with a dynamic table entry
+	 * @throws IOException if an IO or parse error occurs
+	 */
+	public ElfSymbolTable(ElfHeader header, ElfSectionHeader symbolTableSection, ElfStringTable stringTable) {
+
+		this.symbolTableSection = symbolTableSection;
+		this.fileOffset = 0;
+		this.addrOffset = 0;
+		this.length = 0;
+		this.entrySize = entrySize;
+		this.stringTable = stringTable;
+		this.is32bit = header.is32Bit();
+		this.symbolSectionIndexTable = null;
+		this.isDynamic = isDynamic;
+
+		symbols = new ElfSymbol[0];
+		symbolCount = 0;
+	}
+
+	/**
 	 * Returns true if this is the dynamic symbol table
 	 * @return true if this is the dynamic symbol table
 	 */
