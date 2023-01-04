@@ -230,7 +230,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 				segment.isInvalidOffset() || size <= 0) {
 				continue;
 			}
-			long offset = segment.getOffset();
+			long offset = segment.getFileOffset();
 			fileMap.paintRange(offset, offset + size - 1, -2); // -2: used by segment
 		}
 
@@ -738,12 +738,12 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		ElfProgramHeader[] interpProgramHeaders =
 			elf.getProgramHeaders(ElfProgramHeaderConstants.PT_INTERP);
 		if (interpProgramHeaders.length != 0) {
-			long offset = interpProgramHeaders[0].getOffset();
+			long offset = interpProgramHeaders[0].getFileOffset();
 			if (offset == 0) {
 				log("ELF PT_INTERP appears to have been stripped from binary");
 				return;
 			}
-			interpStrAddr = findLoadAddress(interpProgramHeaders[0].getOffset(), 1);
+			interpStrAddr = findLoadAddress(interpProgramHeaders[0].getFileOffset(), 1);
 		}
 
 		if (interpStrAddr == null) {
@@ -1114,7 +1114,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 				if (programHeaders[i].getType() == ElfProgramHeaderConstants.PT_NULL) {
 					continue;
 				}
-				if (programHeaders[i].getOffset() == 0) {
+				if (programHeaders[i].getFileOffset() == 0) {
 					continue; // has been stripped
 				}
 				Address segmentAddr = findLoadAddress(programHeaders[i], 0);
@@ -2895,10 +2895,10 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 				segment.isInvalidOffset()) {
 				continue;
 			}
-			long startOffset = segment.getOffset();
+			long startOffset = segment.getFileOffset();
 			long endOffset = startOffset + segment.getFileSize() - 1;
 			if (fileOffset >= startOffset && headerEndOffset <= endOffset) {
-				headerAddr = findLoadAddress(segment, fileOffset - segment.getOffset());
+				headerAddr = findLoadAddress(segment, fileOffset - segment.getFileOffset());
 				if (headerAddr != null && segment.getType() == ElfProgramHeaderConstants.PT_LOAD) {
 					return headerAddr;
 				}
@@ -3048,7 +3048,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 			if (elfProgramHeader.getType() == ElfProgramHeaderConstants.PT_NULL) {
 				continue;
 			}
-			long fileOffset = elfProgramHeader.getOffset();
+			long fileOffset = elfProgramHeader.getFileOffset();
 			if (elfProgramHeader.getType() != ElfProgramHeaderConstants.PT_LOAD) {
 				if (!includeOtherBlocks) {
 					continue;
@@ -3133,7 +3133,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 			String blockName = getSegmentName(elfProgramHeader, segmentNumber);
 			if (loadSizeBytes != 0) {
-				addInitializedMemorySection(elfProgramHeader, elfProgramHeader.getOffset(),
+				addInitializedMemorySection(elfProgramHeader, elfProgramHeader.getFileOffset(),
 					loadSizeBytes, address, blockName, elfProgramHeader.isRead(),
 					elfProgramHeader.isWrite(),
 					maintainExecuteBit ? elfProgramHeader.isExecute() : false, comment,
