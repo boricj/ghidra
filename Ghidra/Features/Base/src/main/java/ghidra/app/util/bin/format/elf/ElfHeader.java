@@ -494,7 +494,7 @@ public class ElfHeader implements StructConverter, Writeable {
 				sectionHeaderType == ElfSectionHeaderConstants.SHT_ANDROID_RELR) {
 
 				for (ElfRelocationTable relocTable : relocationTableList) {
-					if (relocTable.getFileOffset() == section.getFileOffset()) {
+					if (relocTable.getFileSection().getFileOffset() == section.getFileOffset()) {
 						return; // skip reloc table previously parsed as dynamic entry
 					}
 				}
@@ -547,10 +547,8 @@ public class ElfHeader implements StructConverter, Writeable {
 					format = TableFormat.RELR;
 				}
 
-				ElfRelocationTable relocTable = new ElfRelocationTable(reader,
-					this, section, section.getFileOffset(), section.getVirtualAddress(), section.getFileSize(),
-					section.getEntrySize(), addendTypeReloc, symbolTable, sectionToBeRelocated,
-					format);
+				ElfRelocationTable relocTable = new ElfRelocationTable(this, section,
+					addendTypeReloc, symbolTable, sectionToBeRelocated, format);
 
 				relocationTableList.add(relocTable);
 			}
@@ -621,7 +619,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 			long relocTableOffset = relocTableLoadHeader.getOffset(relocTableAddr);
 			for (ElfRelocationTable relocTable : relocationTableList) {
-				if (relocTable.getFileOffset() == relocTableOffset) {
+				if (relocTable.getFileSection().getFileOffset() == relocTableOffset) {
 					return; // skip reloc table previously parsed
 				}
 			}
@@ -639,8 +637,8 @@ public class ElfHeader implements StructConverter, Writeable {
 				format = TableFormat.RELR;
 			}
 
-			ElfRelocationTable relocTable = new ElfRelocationTable(reader,
-				this, null, relocTableOffset, relocTableAddr, tableSize, tableEntrySize,
+			ElfFileSection fileSection = relocTableLoadHeader.subSection(relocTableAddr - relocTableLoadHeader.getVirtualAddress(), tableSize, tableEntrySize);
+			ElfRelocationTable relocTable = new ElfRelocationTable(this, fileSection,
 				addendTypeReloc, dynamicSymbolTable, null, format);
 			relocationTableList.add(relocTable);
 		}
@@ -1869,7 +1867,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	 */
 	public ElfRelocationTable getRelocationTableAtOffset(long fileOffset) {
 		for (ElfRelocationTable relocationTable : relocationTables) {
-			if (relocationTable.getFileOffset() == fileOffset) {
+			if (relocationTable.getFileSection().getFileOffset() == fileOffset) {
 				return relocationTable;
 			}
 		}
