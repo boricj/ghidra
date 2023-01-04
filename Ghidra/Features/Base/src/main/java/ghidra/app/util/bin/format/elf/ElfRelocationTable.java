@@ -323,12 +323,12 @@ public class ElfRelocationTable implements ElfFileSection, ByteArrayConverter {
 	}
 
 	@Override
-	public long getLength() {
+	public long getFileSize() {
 		return length;
 	}
 
 	@Override
-	public long getAddressOffset() {
+	public long getVirtualAddress() {
 		return addrOffset;
 	}
 
@@ -351,8 +351,8 @@ public class ElfRelocationTable implements ElfFileSection, ByteArrayConverter {
 	}
 
 	@Override
-	public int getEntrySize() {
-		return (int) entrySize;
+	public long getEntrySize() {
+		return entrySize;
 	}
 
 	@Override
