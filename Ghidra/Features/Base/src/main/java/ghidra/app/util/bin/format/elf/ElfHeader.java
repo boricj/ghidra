@@ -885,13 +885,10 @@ public class ElfHeader implements StructConverter, Writeable {
 				int[] symbolSectionIndexTable =
 					getExtendedSymbolSectionIndexTable(symbolTableSectionHeader);
 
-				ElfSymbolTable symbolTable = new ElfSymbolTable(reader, this,
-					symbolTableSectionHeader, symbolTableSectionHeader.getFileOffset(),
-					symbolTableSectionHeader.getVirtualAddress(), symbolTableSectionHeader.getFileSize(),
-					symbolTableSectionHeader.getEntrySize(), stringTable, symbolSectionIndexTable,
-					isDyanmic);
+				ElfSymbolTable symbolTable = new ElfSymbolTable(this, symbolTableSectionHeader,
+					stringTable, symbolSectionIndexTable, isDyanmic);
 				symbolTableList.add(symbolTable);
-				if (symbolTable.getVirtualAddress() == dynamicSymbolTableAddr) {
+				if (symbolTableSectionHeader.getVirtualAddress() == dynamicSymbolTableAddr) {
 					dynamicSymbolTable = symbolTable; // remember dynamic symbol table
 				}
 			}
@@ -972,9 +969,6 @@ public class ElfHeader implements StructConverter, Writeable {
 				return null;
 			}
 
-			// Create dynamic symbol table if not defined as a section
-			long symbolTableOffset = symbolTableLoadHeader.getOffset(tableAddr);
-
 			// determine symbol count from dynamic symbol hash table
 			int symCount;
 			long symbolHashTableOffset = hashTableLoadHeader.getOffset(hashTableAddr);
@@ -992,9 +986,8 @@ public class ElfHeader implements StructConverter, Writeable {
 			// NOTE: When parsed from dynamic table and not found via section header parse
 			// it is assumed that the extended symbol section table is not used.
 
-			return new ElfSymbolTable(reader, this, null, symbolTableOffset,
-				tableAddr, tableEntrySize * symCount, tableEntrySize, dynamicStringTable, null,
-				true);
+			ElfFileSection fileSection = symbolTableLoadHeader.subSection(tableAddr - symbolTableLoadHeader.getVirtualAddress(), tableEntrySize * symCount, tableEntrySize);
+			return new ElfSymbolTable(this, fileSection, dynamicStringTable, null, true);
 		}
 		catch (NotFoundException e) {
 			throw new AssertException(e);
@@ -1843,7 +1836,7 @@ public class ElfHeader implements StructConverter, Writeable {
 			return null;
 		}
 		for (ElfSymbolTable symbolTable : symbolTables) {
-			if (symbolTable.getFileOffset() == symbolTableSection.getFileOffset()) {
+			if (symbolTable.getFileSection().getFileOffset() == symbolTableSection.getFileOffset()) {
 				return symbolTable;
 			}
 		}
