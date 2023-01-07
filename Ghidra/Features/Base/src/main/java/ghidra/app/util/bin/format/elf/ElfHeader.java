@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import ghidra.app.util.bin.*;
 import ghidra.app.util.bin.format.Writeable;
