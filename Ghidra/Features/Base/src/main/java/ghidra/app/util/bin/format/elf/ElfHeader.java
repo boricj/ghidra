@@ -711,35 +711,40 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private void parseDynamicTable() throws IOException {
-		ElfProgramHeader[] dynamicHeaders = getProgramHeaders(ElfProgramHeaderConstants.PT_DYNAMIC);
-		if (dynamicHeaders.length == 1) { // no more than one expected
-
-			// The p_offset may not refer to the start of the DYNAMIC table so we must use
-			// p_vaddr to find it relative to a PT_LOAD segment
-			long vaddr = dynamicHeaders[0].getVirtualAddress();
-			long size = dynamicHeaders[0].getFileSize();
-			if (vaddr == 0 || size == 0) {
-				Msg.warn(this, "ELF Dynamic table appears to have been stripped from binary");
-				return;
-			}
-
-			ElfProgramHeader loadHeader = getProgramLoadHeaderContaining(vaddr);
-			if (loadHeader != null) {
-				ElfFileSection section = loadHeader.subSection(vaddr - loadHeader.getVirtualAddress(), size);
-				dynamicTable = new ElfDynamicTable(this, section);
-				return;
-			}
-		}
-		else if (dynamicHeaders.length > 1) {
-			errorConsumer.accept("Multiple ELF Dynamic table program headers found");
-		}
-
+		ElfFileSection dynamicFileSection = null;
 		ElfSectionHeader[] dynamicSections = getSections(ElfSectionHeaderConstants.SHT_DYNAMIC);
-		if (dynamicSections.length == 1) {
 
-			dynamicTable = new ElfDynamicTable(this, dynamicSections[0]);
+		if (dynamicSections.length >= 1) {
+			dynamicFileSection = dynamicSections[0];
+
+			if (dynamicSections.length > 1) {
+				errorConsumer.accept("Multiple ELF dynamic sections found");
+			}
+		}
+		else {
+			try {
+				ElfProgramHeader[] dynamicHeaders = getProgramHeaders(ElfProgramHeaderConstants.PT_DYNAMIC);
+
+				if (dynamicHeaders.length >= 1) {
+					long vaddr = dynamicHeaders[0].getVirtualAddress();
+					long size = dynamicHeaders[0].getMemorySize();
+					long entrySize = is32Bit() ? 8 : 16;
+
+					dynamicFileSection = findFileSection(vaddr, size, entrySize);
+
+					if (dynamicHeaders.length > 1) {
+						errorConsumer.accept("Multiple ELF dynamic table program headers found");
+					}
+				}
+			}
+			catch (NotFoundException e) {
+				errorConsumer.accept("Couldn't find dynamic table: " + e.getMessage());
+			}
 		}
 
+		if (dynamicFileSection != null) {
+			dynamicTable = new ElfDynamicTable(this, dynamicFileSection);
+		}
 	}
 
 	private void parseStringTables() {
