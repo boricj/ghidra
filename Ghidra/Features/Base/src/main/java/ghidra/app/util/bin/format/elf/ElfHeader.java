@@ -833,58 +833,87 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private void parseSymbolTables() throws IOException {
+		ElfFileSection dynamicSymbolFileSection = null;
 
-		// identify dynamic symbol table address
-		long dynamicSymbolTableAddr = -1;
-		if (dynamicTable != null) {
-			try {
-				dynamicSymbolTableAddr =
-					adjustAddressForPrelink(dynamicTable.getDynamicValue(ElfDynamicType.DT_SYMTAB));
+		try {
+			if (dynamicTable != null) {
+				long dynamicSymbolTableAddr = adjustAddressForPrelink(dynamicTable.getDynamicValue(ElfDynamicType.DT_SYMTAB));
+				long dynamicSymbolTableEntrySize = dynamicTable.getDynamicValue(ElfDynamicType.DT_SYMENT);
+
+				ElfDynamicType dynamicHashType = getDynamicHashTableType();
+				long dynamicHashTableAddr = adjustAddressForPrelink(dynamicTable.getDynamicValue(dynamicHashType));
+				ElfProgramHeader hashTableLoadHeader = getProgramLoadHeaderContaining(dynamicHashTableAddr);
+				if (hashTableLoadHeader == null) {
+					throw new NotFoundException("Couldn't find program header containing dynamic hash table");
+				}
+
+				// determine symbol count from dynamic symbol hash table
+				int symCount;
+				long symbolHashTableOffset = hashTableLoadHeader.getOffset(dynamicHashTableAddr);
+				if (dynamicHashType == ElfDynamicType.DT_GNU_HASH) {
+					symCount = deriveGnuHashDynamicSymbolCount(symbolHashTableOffset);
+				}
+				else if (dynamicHashType == ElfDynamicType.DT_GNU_XHASH) {
+					symCount = deriveGnuXHashDynamicSymbolCount(symbolHashTableOffset);
+				}
+				else {
+					// DT_HASH table, nchain corresponds is same as symbol count
+					symCount = reader.readInt(symbolHashTableOffset + 4); // nchain from DT_HASH
+				}
+
+				dynamicSymbolFileSection = findFileSection(
+					dynamicSymbolTableAddr, dynamicSymbolTableEntrySize * symCount,
+					dynamicSymbolTableEntrySize
+				);
 			}
-			catch (NotFoundException e) {
-				errorConsumer.accept("ELF does not contain a dynamic symbol table (DT_SYMTAB)");
+		}
+		catch (NotFoundException e) {
+			errorConsumer.accept("Couldn't find dynamic symbol table:" + e.getMessage());
+		}
+
+		// Note: we might not be able to recover the full symbol count from dynamic data alone in some cases with
+		// GNU_HASH, which results in a truncated dynamic symbol table. Recover from the DYNSYM section if we can.
+		for (ElfFileSection dynsym : getSections(ElfSectionHeaderConstants.SHT_DYNSYM)) {
+			if (dynsym != null && dynsym.getVirtualAddress() == dynamicSymbolFileSection.getVirtualAddress() &&
+					dynsym.getMemorySize() > dynamicSymbolFileSection.getMemorySize()) {
+				dynamicSymbolFileSection = dynsym;
 			}
 		}
 
-		// Add section based symbol tables
+		List<ElfFileSection> symbolFileSections =
+			Stream.concat(
+				Arrays.asList(sectionHeaders).stream()
+					.filter(e -> e.getType() == ElfSectionHeaderConstants.SHT_SYMTAB || e.getType() == ElfSectionHeaderConstants.SHT_DYNSYM)
+					.map(e -> (ElfFileSection) e),
+					dynamicSymbolFileSection != null ? Stream.of(dynamicSymbolFileSection) : Stream.empty()
+			).distinct().toList();
+
 		ArrayList<ElfSymbolTable> symbolTableList = new ArrayList<>();
-		for (ElfSectionHeader symbolTableSectionHeader : sectionHeaders) {
-			if (symbolTableSectionHeader.getType() == ElfSectionHeaderConstants.SHT_SYMTAB ||
-				symbolTableSectionHeader.getType() == ElfSectionHeaderConstants.SHT_DYNSYM) {
-				// || symbolTableSectionHeader.getType() == ElfSectionHeaderConstants.SHT_SUNW_LDYNSYM) {
-				if (symbolTableSectionHeader.isInvalidOffset()) {
-					continue;
-				}
+		for (ElfFileSection symbolFileSection : symbolFileSections) {
+			boolean isDynamicSymbolTable = symbolFileSection == dynamicSymbolFileSection;
+			int[] symbolSectionIndexTable;
+			ElfStringTable stringTable;
 
-				ElfSectionHeader stringTableSectionHeader =
-					sectionHeaders[symbolTableSectionHeader.getLink()];
-				ElfStringTable stringTable = getStringTable(stringTableSectionHeader);
-
-				Msg.debug(this,
-					"Elf symbol table section " + symbolTableSectionHeader.getNameAsString() +
-						" linked to string table section " +
-						stringTableSectionHeader.getNameAsString());
-
-				boolean isDyanmic = ElfSectionHeaderConstants.dot_dynsym
-						.equals(symbolTableSectionHeader.getNameAsString());
+			if (symbolFileSection instanceof ElfSectionHeader) {
+				ElfSectionHeader symbolTableSectionHeader = (ElfSectionHeader) symbolFileSection;
+				stringTable = getStringTable(sectionHeaders[symbolTableSectionHeader.getLink()]);
 
 				// get extended symbol section index table if present
-				int[] symbolSectionIndexTable =
-					getExtendedSymbolSectionIndexTable(symbolTableSectionHeader);
-
-				ElfSymbolTable symbolTable = new ElfSymbolTable(this, symbolTableSectionHeader,
-					stringTable, symbolSectionIndexTable, isDyanmic);
-				symbolTableList.add(symbolTable);
-				if (symbolTableSectionHeader.getVirtualAddress() == dynamicSymbolTableAddr) {
-					dynamicSymbolTable = symbolTable; // remember dynamic symbol table
-				}
+				symbolSectionIndexTable = getExtendedSymbolSectionIndexTable(symbolTableSectionHeader);
 			}
-		}
+			else {
+				stringTable = dynamicStringTable;
 
-		if (dynamicSymbolTable == null && dynamicSymbolTableAddr != -1) {
-			dynamicSymbolTable = parseDynamicSymbolTable();
-			if (dynamicSymbolTable != null) {
-				symbolTableList.add(dynamicSymbolTable);
+				// NOTE: When parsed from dynamic table and not found via section header parse
+				// it is assumed that the extended symbol section table is not used.
+				symbolSectionIndexTable = null;
+			}
+
+			ElfSymbolTable symbolTable = new ElfSymbolTable(this, symbolFileSection, stringTable, symbolSectionIndexTable, isDynamicSymbolTable);
+			symbolTableList.add(symbolTable);
+
+			if (isDynamicSymbolTable) {
+				dynamicSymbolTable = symbolTable;
 			}
 		}
 
@@ -903,82 +932,6 @@ public class ElfHeader implements StructConverter, Writeable {
 			return ElfDynamicType.DT_GNU_XHASH;
 		}
 		return null;
-	}
-
-	private ElfSymbolTable parseDynamicSymbolTable() throws IOException {
-
-		ElfDynamicType dynamicHashType = getDynamicHashTableType();
-
-		if (!dynamicTable.containsDynamicValue(ElfDynamicType.DT_SYMTAB) ||
-			!dynamicTable.containsDynamicValue(ElfDynamicType.DT_SYMENT) ||
-			dynamicHashType == null) {
-			if (dynamicStringTable != null) {
-				Msg.warn(this, "Failed to parse DT_SYMTAB, missing dynamic dependency");
-			}
-			return null;
-		}
-
-		try {
-
-			long tableAddr = dynamicTable.getDynamicValue(ElfDynamicType.DT_SYMTAB);
-			if (tableAddr == 0) {
-				errorConsumer.accept(
-					"ELF Dynamic String Table of size appears to have been stripped from binary");
-			}
-
-			if (dynamicStringTable == null) {
-				errorConsumer.accept("Failed to process DT_SYMTAB, missing dynamic string table");
-				return null;
-			}
-
-			if (tableAddr == 0) {
-				return null;
-			}
-
-			tableAddr = adjustAddressForPrelink(tableAddr);
-			long tableEntrySize = dynamicTable.getDynamicValue(ElfDynamicType.DT_SYMENT);
-
-			// Use dynamic symbol hash table DT_HASH, DT_GNU_HASH, or DT_GNU_XHASH to 
-			// determine symbol table count/length
-			long hashTableAddr = dynamicTable.getDynamicValue(dynamicHashType);
-			hashTableAddr = adjustAddressForPrelink(hashTableAddr);
-
-			ElfProgramHeader symbolTableLoadHeader = getProgramLoadHeaderContaining(tableAddr);
-			if (symbolTableLoadHeader == null) {
-				errorConsumer.accept(
-					"Failed to locate DT_SYMTAB in memory at 0x" + Long.toHexString(tableAddr));
-				return null;
-			}
-			ElfProgramHeader hashTableLoadHeader = getProgramLoadHeaderContaining(hashTableAddr);
-			if (hashTableLoadHeader == null) {
-				errorConsumer.accept("Failed to locate DT_HASH, DT_GNU_HASH, or DT_GNU_XHASH in memory at 0x" +
-					Long.toHexString(hashTableAddr));
-				return null;
-			}
-
-			// determine symbol count from dynamic symbol hash table
-			int symCount;
-			long symbolHashTableOffset = hashTableLoadHeader.getOffset(hashTableAddr);
-			if (dynamicHashType == ElfDynamicType.DT_GNU_HASH) {
-				symCount = deriveGnuHashDynamicSymbolCount(symbolHashTableOffset);
-			}
-			else if (dynamicHashType == ElfDynamicType.DT_GNU_XHASH) {
-				symCount = deriveGnuXHashDynamicSymbolCount(symbolHashTableOffset);
-			}
-			else {
-				// DT_HASH table, nchain corresponds is same as symbol count
-				symCount = reader.readInt(symbolHashTableOffset + 4); // nchain from DT_HASH
-			}
-
-			// NOTE: When parsed from dynamic table and not found via section header parse
-			// it is assumed that the extended symbol section table is not used.
-
-			ElfFileSection fileSection = symbolTableLoadHeader.subSection(tableAddr - symbolTableLoadHeader.getVirtualAddress(), tableEntrySize * symCount, tableEntrySize);
-			return new ElfSymbolTable(this, fileSection, dynamicStringTable, null, true);
-		}
-		catch (NotFoundException e) {
-			throw new AssertException(e);
-		}
 	}
 
 	/**
