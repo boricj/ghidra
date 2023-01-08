@@ -773,48 +773,42 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private int[] getExtendedSymbolSectionIndexTable(ElfSectionHeader symbolTableSectionHeader) {
-
-		if (!hasExtendedSymbolSectionIndexTable) {
-			return null;
-		}
-
-		// Find SHT_SYMTAB_SHNDX section linked to specified symbol table section
 		ElfSectionHeader symbolSectionIndexHeader = null;
-		for (ElfSectionHeader section : sectionHeaders) {
-			if (section.getType() != ElfSectionHeaderConstants.SHT_SYMTAB_SHNDX) {
-				continue;
+		int[] indexTable = null;
+
+		if (hasExtendedSymbolSectionIndexTable) {
+			// Find SHT_SYMTAB_SHNDX section linked to specified symbol table section
+			for (ElfSectionHeader section : sectionHeaders) {
+				if (section.getType() != ElfSectionHeaderConstants.SHT_SYMTAB_SHNDX) {
+					continue;
+				}
+				int linkIndex = section.getLink();
+				if (linkIndex <= 0 || linkIndex >= sectionHeaders.length) {
+					continue;
+				}
+				if (sectionHeaders[linkIndex] == symbolTableSectionHeader) {
+					symbolSectionIndexHeader = section;
+					break;
+				}
 			}
-			int linkIndex = section.getLink();
-			if (linkIndex <= 0 || linkIndex >= sectionHeaders.length) {
-				continue;
-			}
-			if (sectionHeaders[linkIndex] == symbolTableSectionHeader) {
-				symbolSectionIndexHeader = section;
-				break;
-			}
-		}
-		if (symbolSectionIndexHeader == null) {
-			return null;
 		}
 
-		// determine number of 32-bit index elements for int[]
-		int count = (int) (symbolSectionIndexHeader.getFileSize() / 4);
-		int[] indexTable = new int[count];
+		if (symbolSectionIndexHeader != null) {
+			// determine number of 32-bit index elements for int[]
+			int count = (int) (symbolSectionIndexHeader.getFileSize() / 4);
+			indexTable = new int[count];
+			BinaryReader reader = symbolSectionIndexHeader.getReader();
 
-		long ptr = reader.getPointerIndex();
-		try {
-			reader.setPointerIndex(symbolSectionIndexHeader.getFileOffset());
-			for (int i = 0; i < count; i++) {
-				indexTable[i] = reader.readNextInt();
+			try {
+				for (int i = 0; i < count; i++) {
+					indexTable[i] = reader.readNextInt();
+				}
 			}
-		}
-		catch (IOException e) {
-			errorConsumer.accept("Failed to read symbol section index table at 0x" +
-				Long.toHexString(symbolSectionIndexHeader.getFileOffset()) + ": " +
-				symbolSectionIndexHeader.getNameAsString());
-		}
-		finally {
-			reader.setPointerIndex(ptr); // restore reader position
+			catch (IOException e) {
+				errorConsumer.accept("Failed to read symbol section index table at 0x" +
+					Long.toHexString(symbolSectionIndexHeader.getFileOffset()) + ": " +
+					symbolSectionIndexHeader.getNameAsString());
+			}
 		}
 
 		return indexTable;
