@@ -40,6 +40,7 @@ configurations {
 dependencies {
 	api project(':SoftwareModeling')
 
+	api 'commons-cli:commons-cli:1.5.0'
 	api 'org.apache.felix:org.apache.felix.framework:7.0.3'
 	api 'com.github.rotty3000:phidias:0.3.7'
 	api 'biz.aQute.bnd:biz.aQute.bnd.util:6.2.0'
