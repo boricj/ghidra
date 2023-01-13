@@ -113,6 +113,23 @@ public class ElfHeader implements StructConverter, Writeable {
 		initElfHeader();
 	}
 
+	private ElfFileSection findFileSection(long address, long length, long entrySize) throws NotFoundException {
+		for (ElfSectionHeader sectionHeader : sectionHeaders) {
+			if (sectionHeader.getVirtualAddress() == address &&
+				sectionHeader.getMemorySize() == length &&
+				sectionHeader.getEntrySize() == entrySize) {
+					return sectionHeader;
+			}
+		}
+
+		ElfProgramHeader loadHeader = getProgramLoadHeaderContaining(address);
+		if (loadHeader == null || loadHeader.getMemorySize() < length) {
+			throw new NotFoundException("No program header found covering " + length + " bytes at 0x" + Long.toHexString(address));
+		}
+
+		return loadHeader.subSection(address - loadHeader.getVirtualAddress(), length, entrySize);
+	}
+
 	/**
 	 * Returns the unconstrained binary reader (i.e., reads beyond EOF
 	 * will return 0-bytes).
