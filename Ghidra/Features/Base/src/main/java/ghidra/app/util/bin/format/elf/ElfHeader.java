@@ -748,71 +748,40 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private void parseStringTables() {
+		ElfFileSection dynamicStringFileSection = null;
 
-		// identify dynamic symbol table address
-		long dynamicStringTableAddr = -1;
-		if (dynamicTable != null) {
-			try {
-				dynamicStringTableAddr =
-					adjustAddressForPrelink(dynamicTable.getDynamicValue(ElfDynamicType.DT_STRTAB));
-			}
-			catch (NotFoundException e) {
-				errorConsumer.accept("ELF does not contain a dynamic string table (DT_STRTAB)");
+		try {
+			if (dynamicTable != null) {
+				long dynamicStringTableAddr = adjustAddressForPrelink(dynamicTable.getDynamicValue(ElfDynamicType.DT_STRTAB));
+				long dynamicStringTableSize = dynamicTable.getDynamicValue(ElfDynamicType.DT_STRSZ);
+
+				dynamicStringFileSection = findFileSection(dynamicStringTableAddr, dynamicStringTableSize, 0);
 			}
 		}
+		catch (NotFoundException e) {
+			errorConsumer.accept("Couldn't find dynamic string table: " + e.getMessage());
+		}
+
+		List<ElfFileSection> stringFileSections =
+			Stream.concat(
+				Arrays.asList(sectionHeaders).stream()
+					.filter(e -> e.getType() == ElfSectionHeaderConstants.SHT_STRTAB)
+					.map(e -> (ElfFileSection) e),
+				dynamicStringFileSection != null ? Stream.of(dynamicStringFileSection) : Stream.empty()
+			).distinct().toList();
 
 		ArrayList<ElfStringTable> stringTableList = new ArrayList<>();
-		for (ElfSectionHeader stringTableSectionHeader : sectionHeaders) {
-			if (stringTableSectionHeader.getType() == ElfSectionHeaderConstants.SHT_STRTAB) {
-				ElfStringTable stringTable = new ElfStringTable(this, stringTableSectionHeader);
-				stringTableList.add(stringTable);
-				if (stringTableSectionHeader.getVirtualAddress() == dynamicStringTableAddr) {
-					dynamicStringTable = stringTable;
-				}
-			}
-		}
+		for (ElfFileSection stringFileSection : stringFileSections) {
+			ElfStringTable stringTable = new ElfStringTable(this, stringFileSection);
+			stringTableList.add(stringTable);
 
-		if (dynamicStringTable == null && dynamicStringTableAddr != -1) {
-			dynamicStringTable = parseDynamicStringTable(dynamicStringTableAddr);
-			if (dynamicStringTable != null) {
-				stringTableList.add(dynamicStringTable);
+			if (stringFileSection == dynamicStringFileSection) {
+				dynamicStringTable = stringTable;
 			}
 		}
 
 		stringTables = new ElfStringTable[stringTableList.size()];
 		stringTableList.toArray(stringTables);
-	}
-
-	private ElfStringTable parseDynamicStringTable(long dynamicStringTableAddr) {
-
-		if (!dynamicTable.containsDynamicValue(ElfDynamicType.DT_STRSZ)) {
-			errorConsumer.accept("Failed to parse DT_STRTAB, missing dynamic dependency");
-			return null;
-		}
-
-		try {
-			long stringTableSize = dynamicTable.getDynamicValue(ElfDynamicType.DT_STRSZ);
-
-			if (dynamicStringTableAddr == 0) {
-				errorConsumer.accept("ELF Dynamic String Table of size " + stringTableSize +
-					" appears to have been stripped from binary");
-				return null;
-			}
-
-			ElfProgramHeader stringTableLoadHeader =
-				getProgramLoadHeaderContaining(dynamicStringTableAddr);
-			if (stringTableLoadHeader == null) {
-				errorConsumer.accept("Failed to locate DT_STRTAB in memory at 0x" +
-					Long.toHexString(dynamicStringTableAddr));
-				return null;
-			}
-
-			ElfFileSection fileSection = stringTableLoadHeader.subSection(dynamicStringTableAddr - stringTableLoadHeader.getVirtualAddress(), stringTableSize);
-			return new ElfStringTable(this, fileSection);
-		}
-		catch (NotFoundException e) {
-			throw new AssertException(e);
-		}
 	}
 
 	private int[] getExtendedSymbolSectionIndexTable(ElfSectionHeader symbolTableSectionHeader) {
