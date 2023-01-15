@@ -48,8 +48,6 @@ public class ElfHeader implements StructConverter, Writeable {
 	private HashMap<Integer, ElfSectionHeaderType> sectionHeaderTypeMap;
 	private HashMap<Integer, ElfDynamicType> dynamicTypeMap;
 
-	private ByteProvider provider; // original byte provider
-	private BinaryReader reader; // unlimited reader
 	private ElfLoadAdapter elfLoadAdapter = new ElfLoadAdapter();
 
 	private byte e_ident_magic_num; //magic number
@@ -105,25 +103,25 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * @throws IOException if file IO error occurs
 	 */
 	public ElfHeader(ByteProvider provider, Consumer<String> errorConsumer) throws ElfException, IOException {
-		this.provider = provider;
 		this.errorConsumer = errorConsumer != null ? errorConsumer : msg -> {
 			/* no logging if errorConsumer was null */
 		};
-		initElfHeader();
+
+		BinaryReader reader = initElfHeader(provider);
 
 		initElfLoadAdapter();
 
-		parsePreLinkImageBase();
+		parsePreLinkImageBase(reader);
 
-		parseProgramHeaders();
+		parseProgramHeaders(reader);
 
-		parseSectionHeaders();
+		parseSectionHeaders(reader);
 
 		parseDynamicTable();
 
 		parseStringTables();
 		parseDynamicLibraryNames();
-		parseSymbolTables();
+		parseSymbolTables(reader);
 		parseRelocationTables();
 
 		parseGNU_d();
@@ -151,7 +149,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		errorConsumer.accept(msg);
 	}
 
-	protected void initElfHeader() throws ElfException {
+	protected BinaryReader initElfHeader(ByteProvider provider) throws ElfException {
 		try {
 			if (provider.length() < INITIAL_READ_LEN) {
 				throw new ElfException("Not enough bytes to be a valid ELF executable.");
@@ -161,7 +159,7 @@ public class ElfHeader implements StructConverter, Writeable {
 			determineHeaderEndianess(initialBytes);
 
 			// reader uses unbounded provider wrapper to allow handling of missing/truncated headers
-			reader = new BinaryReader(new UnlimitedByteProviderWrapper(provider),
+			BinaryReader reader = new BinaryReader(new UnlimitedByteProviderWrapper(provider),
 				hasLittleEndianHeaders);
 
 			e_ident_magic_num = reader.readNextByte();
@@ -213,28 +211,30 @@ public class ElfHeader implements StructConverter, Writeable {
 
 			if (e_shnum == 0 ||
 				e_shnum >= Short.toUnsignedInt(ElfSectionHeaderConstants.SHN_LORESERVE)) {
-				e_shnum = readExtendedSectionHeaderCount(); // use extended stored section header count
+				e_shnum = readExtendedSectionHeaderCount(reader); // use extended stored section header count
 			}
 
 			if (e_phnum == Short.toUnsignedInt(ElfConstants.PN_XNUM)) {
-				e_phnum = readExtendedProgramHeaderCount(); // use extended stored program header count
+				e_phnum = readExtendedProgramHeaderCount(reader); // use extended stored program header count
 			}
 
 			if (e_shnum == 0) {
 				e_shstrndx = 0;
 			}
 			else if (e_shstrndx == Short.toUnsignedInt(ElfSectionHeaderConstants.SHN_XINDEX)) {
-				e_shstrndx = readExtendedSectionHeaderStringTableIndex();
+				e_shstrndx = readExtendedSectionHeaderStringTableIndex(reader);
 			}
+
+			return reader;
 		}
 		catch (IOException e) {
 			throw new ElfException(e);
 		}
 	}
 
-	private ElfSectionHeader getSection0() throws IOException {
+	private ElfSectionHeader getSection0(BinaryReader reader) throws IOException {
 		if (section0 == null && e_shoff != 0) {
-			if (!providerContainsRegion(e_shoff, e_shentsize)) {
+			if (!providerContainsRegion(reader, e_shoff, e_shentsize)) {
 				return null;
 			}
 			reader.setPointerIndex(e_shoff);
@@ -250,8 +250,8 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * @return extended program header count or 0 if not found or out of range
 	 * @throws IOException if file IO error occurs
 	 */
-	private int readExtendedProgramHeaderCount() throws IOException {
-		ElfSectionHeader s = getSection0();
+	private int readExtendedProgramHeaderCount(BinaryReader reader) throws IOException {
+		ElfSectionHeader s = getSection0(reader);
 		if (s != null && s.getType() == ElfSectionHeaderConstants.SHT_NULL) {
 			int val = s.sh_info;
 			return val < 0 ? 0 : val;
@@ -266,8 +266,8 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * @return extended section header count or 0 if not found or out of range
 	 * @throws IOException if file IO error occurs
 	 */
-	private int readExtendedSectionHeaderCount() throws IOException {
-		ElfSectionHeader s = getSection0();
+	private int readExtendedSectionHeaderCount(BinaryReader reader) throws IOException {
+		ElfSectionHeader s = getSection0(reader);
 		if (s != null && s.getType() == ElfSectionHeaderConstants.SHT_NULL) {
 			long val = s.sh_size;
 			return (val < 0 || val > Integer.MAX_VALUE) ? 0 : (int) val;
@@ -282,8 +282,8 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * @return extended section header count or 0 if not found or out of range
 	 * @throws IOException if file IO error occurs
 	 */
-	private int readExtendedSectionHeaderStringTableIndex() throws IOException {
-		ElfSectionHeader s = getSection0();
+	private int readExtendedSectionHeaderStringTableIndex(BinaryReader reader) throws IOException {
+		ElfSectionHeader s = getSection0(reader);
 		if (s != null && s.getType() == ElfSectionHeaderConstants.SHT_NULL) {
 			int val = s.sh_link;
 			return val < 0 ? 0 : val;
@@ -779,7 +779,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		return indexTable;
 	}
 
-	private void parseSymbolTables() throws IOException {
+	private void parseSymbolTables(BinaryReader reader) throws IOException {
 		ElfFileSection dynamicSymbolFileSection = null;
 
 		try {
@@ -798,10 +798,10 @@ public class ElfHeader implements StructConverter, Writeable {
 				int symCount;
 				long symbolHashTableOffset = hashTableLoadHeader.getOffset(dynamicHashTableAddr);
 				if (dynamicHashType == ElfDynamicType.DT_GNU_HASH) {
-					symCount = deriveGnuHashDynamicSymbolCount(symbolHashTableOffset);
+					symCount = deriveGnuHashDynamicSymbolCount(reader, symbolHashTableOffset);
 				}
 				else if (dynamicHashType == ElfDynamicType.DT_GNU_XHASH) {
-					symCount = deriveGnuXHashDynamicSymbolCount(symbolHashTableOffset);
+					symCount = deriveGnuXHashDynamicSymbolCount(reader, symbolHashTableOffset);
 				}
 				else {
 					// DT_HASH table, nchain corresponds is same as symbol count
@@ -887,7 +887,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * @return dynamic symbol count
 	 * @throws IOException file read error
 	 */
-	private int deriveGnuHashDynamicSymbolCount(long gnuHashTableOffset) throws IOException {
+	private int deriveGnuHashDynamicSymbolCount(BinaryReader reader, long gnuHashTableOffset) throws IOException {
 		int numBuckets = reader.readInt(gnuHashTableOffset);
 		int symbolBase = reader.readInt(gnuHashTableOffset + 4);
 		int bloomSize = reader.readInt(gnuHashTableOffset + 8);
@@ -926,7 +926,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * @return dynamic symbol count
 	 * @throws IOException file read error
 	 */
-	private int deriveGnuXHashDynamicSymbolCount(long gnuHashTableOffset) throws IOException {
+	private int deriveGnuXHashDynamicSymbolCount(BinaryReader reader, long gnuHashTableOffset) throws IOException {
 		// Elf32_Word  ngnusyms;  // number of entries in chains (and xlat); dynsymcount=symndx+ngnusyms
 		// Elf32_Word  nbuckets;  // number of hash table buckets
 		// Elf32_Word  symndx;  // number of initial .dynsym entires skipped in chains[] (and xlat[])
@@ -937,16 +937,14 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Perform offset region check against byte provider.
-	 * This is done against the byte provider since the
-	 * reader is unbounded.
+	 * Perform offset region check against binary provider.
 	 * @param offset starting offset
 	 * @param length length of range
 	 * @return true if provider contains specified byte offset range
 	 */
-	private boolean providerContainsRegion(long offset, int length) {
+	private static boolean providerContainsRegion(BinaryReader reader, long offset, int length) {
 		try {
-			return offset >= 0 && (offset + length) <= provider.length();
+			return offset >= 0 && (offset + length) <= reader.length();
 		}
 		catch (IOException e) {
 			return false;
@@ -957,7 +955,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * Some elfs can get pre-linked to an OS. At the very end a "PRE " string is
 	 * appended with the image base load address set.
 	 */
-	protected void parsePreLinkImageBase() throws IOException {
+	protected void parsePreLinkImageBase(BinaryReader reader) throws IOException {
 		long fileLength = reader.getByteProvider().length();
 
 		int preLinkImageBaseInt = reader.readInt(fileLength - 8);
@@ -968,13 +966,13 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 	}
 
-	protected void parseSectionHeaders()
+	protected void parseSectionHeaders(BinaryReader reader)
 			throws IOException {
 		boolean missing = false;
 		sectionHeaders = new ElfSectionHeader[e_shnum];
 		for (int i = 0; i < e_shnum; ++i) {
 			long index = e_shoff + (i * e_shentsize);
-			if (!missing && !providerContainsRegion(index, e_shentsize)) {
+			if (!missing && !providerContainsRegion(reader, index, e_shentsize)) {
 				int unreadCnt = e_shnum - i;
 				errorConsumer.accept(
 					unreadCnt + " of " + e_shnum +
@@ -1001,13 +999,13 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 	}
 
-	private void parseProgramHeaders()
+	private void parseProgramHeaders(BinaryReader reader)
 			throws IOException {
 		boolean missing = false;
 		programHeaders = new ElfProgramHeader[e_phnum];
 		for (int i = 0; i < e_phnum; ++i) {
 			long index = e_phoff + (i * e_phentsize);
-			if (!missing && !providerContainsRegion(index, e_phentsize)) {
+			if (!missing && !providerContainsRegion(reader, index, e_phentsize)) {
 				int unreadCnt = e_phnum - i;
 				errorConsumer.accept(
 					unreadCnt + " of " + e_phnum +
@@ -1074,43 +1072,6 @@ public class ElfHeader implements StructConverter, Writeable {
 			minBase = addr;
 		}
 		return minBase;
-	}
-
-	/**
-	 * Inspect the Elf image and determine the default image base prior 
-	 * to any parse method being invoked (i.e., only the main Elf
-	 * header structure has been parsed during initialization.
-	 * The image base is the virtual address of the PT_LOAD program header
-	 * with the smallest address or 0 if no program headers exist.  By default,
-	 * the image base address should be treated as a addressable unit offset.
-	 * @return preferred image base 
-	 */
-	public long findImageBase() {
-
-		// FIXME! This needs to be consistent with the getImageBase() method
-		// which currently considers prelink. 
-
-		long minBase = -1;
-
-		int n = Math.min(e_phnum, MAX_HEADERS_TO_CHECK_FOR_IMAGEBASE);
-		for (int i = 0; i < n; ++i) {
-			long index = e_phoff + (i * e_phentsize);
-			if (!providerContainsRegion(index, e_phentsize)) {
-				break;
-			}
-			reader.setPointerIndex(index);
-			try {
-				int headerType = reader.peekNextInt();
-				if (headerType == ElfProgramHeaderConstants.PT_LOAD) {
-					ElfProgramHeader header = new ElfProgramHeader(reader, this);
-					minBase = getMinBase(header.getVirtualAddress(), minBase);
-				}
-			}
-			catch (IOException e) {
-				// skip
-			}
-		}
-		return minBase == -1 ? 0 : minBase;
 	}
 
 	private Long elfImageBase;
