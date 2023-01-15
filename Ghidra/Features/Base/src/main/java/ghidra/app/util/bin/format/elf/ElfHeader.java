@@ -76,9 +76,6 @@ public class ElfHeader implements StructConverter, Writeable {
 
 	private Structure headerStructure;
 
-	private boolean parsed = false;
-	private boolean parsedSectionHeaders = false;
-
 	private Long preLinkImageBase = null;
 	private ElfSectionHeader section0 = null;
 	private ElfSectionHeader[] sectionHeaders = new ElfSectionHeader[0];
@@ -105,13 +102,32 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * @param provider byte provider
 	 * @param errorConsumer error consumer
 	 * @throws ElfException if header parse failed
+	 * @throws IOException if file IO error occurs
 	 */
-	public ElfHeader(ByteProvider provider, Consumer<String> errorConsumer) throws ElfException {
+	public ElfHeader(ByteProvider provider, Consumer<String> errorConsumer) throws ElfException, IOException {
 		this.provider = provider;
 		this.errorConsumer = errorConsumer != null ? errorConsumer : msg -> {
 			/* no logging if errorConsumer was null */
 		};
 		initElfHeader();
+
+		initElfLoadAdapter();
+
+		parsePreLinkImageBase();
+
+		parseProgramHeaders();
+
+		parseSectionHeaders();
+
+		parseDynamicTable();
+
+		parseStringTables();
+		parseDynamicLibraryNames();
+		parseSymbolTables();
+		parseRelocationTables();
+
+		parseGNU_d();
+		parseGNU_r();
 	}
 
 	private ElfFileSection findFileSection(long address, long length, long entrySize) throws NotFoundException {
@@ -129,23 +145,6 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 
 		return loadHeader.subSection(address - loadHeader.getVirtualAddress(), length, entrySize);
-	}
-
-	/**
-	 * Returns the unconstrained binary reader (i.e., reads beyond EOF
-	 * will return 0-bytes).
-	 * @return the binary reader
-	 */
-	public BinaryReader getReader() {
-		return reader;
-	}
-
-	/**
-	 * Returns the byte provider
-	 * @return the byte provider
-	 */
-	public ByteProvider getByteProvider() {
-		return provider;
 	}
 
 	void logError(String msg) {
@@ -310,40 +309,6 @@ public class ElfHeader implements StructConverter, Writeable {
 			extensionAdapter.addDynamicTypes(dynamicTypeMap);
 			elfLoadAdapter = extensionAdapter;
 		}
-	}
-
-	/**
-	 * Perform parse of all supported headers.
-	 * @throws IOException if file IO error occurs
-	 */
-	public void parse() throws IOException {
-
-		if (reader == null) {
-			throw new IOException("ELF binary reader is null!");
-		}
-		if (parsed) {
-			return;
-		}
-
-		initElfLoadAdapter();
-
-		parsed = true;
-
-		parsePreLinkImageBase();
-
-		parseProgramHeaders();
-
-		parseSectionHeaders();
-
-		parseDynamicTable();
-
-		parseStringTables();
-		parseDynamicLibraryNames();
-		parseSymbolTables();
-		parseRelocationTables();
-
-		parseGNU_d();
-		parseGNU_r();
 	}
 
 	/**
@@ -1005,14 +970,6 @@ public class ElfHeader implements StructConverter, Writeable {
 
 	protected void parseSectionHeaders()
 			throws IOException {
-		if (reader == null) {
-			throw new IOException("ELF binary reader is null!");
-		}
-		if (parsedSectionHeaders) {
-			return;
-		}
-
-		parsedSectionHeaders = true;
 		boolean missing = false;
 		sectionHeaders = new ElfSectionHeader[e_shnum];
 		for (int i = 0; i < e_shnum; ++i) {
