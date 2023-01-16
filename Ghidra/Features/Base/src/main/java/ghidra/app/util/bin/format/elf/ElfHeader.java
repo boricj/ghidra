@@ -1126,28 +1126,6 @@ public class ElfHeader implements StructConverter, Writeable {
 		return false;
 	}
 
-	public boolean isSectionLoaded(ElfSectionHeader section) {
-		if (section.getType() == ElfSectionHeaderConstants.SHT_NULL) {
-			return false;
-		}
-		long sectionStart = section.getVirtualAddress();
-		if (sectionStart == 0) {
-			return false;
-		}
-		long sectionEnd = section.getFileSize() - 1 + sectionStart;
-		for (ElfProgramHeader segment : programHeaders) {
-			if (segment.getType() != ElfProgramHeaderConstants.PT_LOAD) {
-				continue;
-			}
-			long segmentStart = segment.getVirtualAddress();
-			long segmentEnd = segment.getMemorySize() - 1 + segmentStart;
-			if (segmentStart <= sectionStart && segmentEnd >= sectionEnd) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	private void determineHeaderEndianess(byte ident_data) throws ElfException {
 		hasLittleEndianHeaders = true;
 
@@ -1402,24 +1380,6 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the section header at the specified address,
-	 * or null if no section exists at that address.
-	 * @param address the address of the requested section
-	 * @return the section header with the specified address
-	 */
-	public ElfSectionHeader getSectionAt(long address) {
-		for (ElfSectionHeader sectionHeader : sectionHeaders) {
-			if (!sectionHeader.isAlloc()) {
-				continue;
-			}
-			if (sectionHeader.getVirtualAddress() == address) {
-				return sectionHeader;
-			}
-		}
-		return null;
-	}
-
-	/**
 	 * Returns the section header that loads/contains the specified address,
 	 * or null if no section contains the address.
 	 * @param address the address of the requested section
@@ -1468,22 +1428,6 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the index of the specified section.
-	 * The index is the order in which the section was
-	 * defined in the section header table.
-	 * @param section the section header
-	 * @return the index of the specified section header
-	 */
-	public int getSectionIndex(ElfSectionHeader section) {
-		for (int i = 0; i < sectionHeaders.length; i++) {
-			if (sectionHeaders[i] == section) {
-				return i;
-			}
-		}
-		throw new RuntimeException("Section not located.");
-	}
-
-	/**
 	 * Returns the program headers as defined in this ELF file.
 	 * @return the program headers as defined in this ELF file
 	 */
@@ -1517,36 +1461,6 @@ public class ElfHeader implements StructConverter, Writeable {
 	 */
 	public ElfDynamicTable getDynamicTable() {
 		return dynamicTable;
-	}
-
-	/**
-	 * Returns the program header with type of PT_PHDR.
-	 * Or, null if one does not exist.
-	 * @return the program header with type of PT_PHDR
-	 */
-	public ElfProgramHeader getProgramHeaderProgramHeader() {
-		ElfProgramHeader[] pharr = getProgramHeaders(ElfProgramHeaderConstants.PT_PHDR);
-		if (pharr.length == 0 || pharr.length > 1) {
-			return null;
-			//throw new RuntimeException("Unable to locate PT_PHDR program header");
-		}
-		return pharr[0];
-	}
-
-	/**
-	 * Returns the program header at the specified address,
-	 * or null if no program header exists at that address.
-	 * @param virtualAddr the address of the requested program header
-	 * @return the program header with the specified address
-	 */
-	public ElfProgramHeader getProgramHeaderAt(long virtualAddr) {
-		for (ElfProgramHeader programHeader : programHeaders) {
-			if (programHeader.getType() == ElfProgramHeaderConstants.PT_LOAD &&
-				programHeader.getVirtualAddress() == virtualAddr) {
-				return programHeader;
-			}
-		}
-		return null;
 	}
 
 	/**
@@ -1784,102 +1698,6 @@ public class ElfHeader implements StructConverter, Writeable {
 		return 13;
 	}
 
-	private void addSection(ElfSectionHeader newSection) {
-		++e_shnum;
-
-		ElfSectionHeader[] tmp = new ElfSectionHeader[e_shnum];
-		System.arraycopy(sectionHeaders, 0, tmp, 0, sectionHeaders.length);
-		sectionHeaders = tmp;
-
-		sectionHeaders[e_shnum - 1] = newSection;
-
-		if (e_shnum != sectionHeaders.length) {
-			throw new IllegalStateException();
-		}
-	}
-
-	/**
-	 * Adds a new section using the specified memory block.
-	 * The memory block is used to setting the address and size.
-	 * As well as, setting the data.
-	 * @param block the memory block
-	 * @param sh_name the byte index into the string table where the name begins
-	 * @return the newly created section
-	 * @throws MemoryAccessException if any of the requested memory block bytes are uninitialized.
-	 */
-	public ElfSectionHeader addSection(MemoryBlock block, int sh_name)
-			throws MemoryAccessException {
-		ElfSectionHeader newSection = new ElfSectionHeader(this, block, sh_name, getImageBase());
-		addSection(newSection);
-		return newSection;
-	}
-
-	/**
-	 * Adds a new section the specifed name and name index.
-	 * The type of the section will be SHT_PROGBITS.
-	 * @param name the actual name of the new section
-	 * @param sh_name the byte index into the string table where the name begins
-	 * @return the newly created section
-	 */
-	public ElfSectionHeader addSection(String name, int sh_name) {
-		return addSection(name, sh_name, ElfSectionHeaderConstants.SHT_PROGBITS);
-	}
-
-	/**
-	 * Adds a new section the specifed name and name index.
-	 * The type of the section will be SHT_PROGBITS.
-	 * @param name the actual name of the new section
-	 * @param sh_name the byte index into the string table where the name begins
-	 * @param type the type of the new section
-	 * @return the newly created section
-	 */
-	public ElfSectionHeader addSection(String name, int sh_name, int type) {
-		ElfSectionHeader newSection = new ElfSectionHeader(this, name, sh_name, type);
-		addSection(newSection);
-		return newSection;
-	}
-
-	/**
-	 * Appends the new program header to the end of the existing
-	 * program header table.
-	 * @param ph the new program header
-	 */
-	public void addProgramHeader(ElfProgramHeader ph) {
-		ElfProgramHeader[] tmp = new ElfProgramHeader[programHeaders.length + 1];
-
-		int pos = tmp.length - 1;
-
-		boolean firstLoad = true;
-		int firstLoadPos = -1;
-
-		/*PT_LOAD segments must be inserted in sorted order*/
-		if (ph.getType() == ElfProgramHeaderConstants.PT_LOAD) {
-			for (int i = 0; i < programHeaders.length - 1; ++i) {
-				if (programHeaders[i].getType() == ElfProgramHeaderConstants.PT_LOAD) {
-					if (firstLoad) {
-						firstLoad = false;
-						firstLoadPos = i;
-					}
-					pos = i;
-				}
-			}
-			++pos;
-		}
-
-		System.arraycopy(programHeaders, 0, tmp, 0, pos);
-		tmp[pos] = ph;
-		System.arraycopy(programHeaders, pos, tmp, pos + 1, programHeaders.length - pos);
-
-		if (ph.getType() == ElfProgramHeaderConstants.PT_LOAD) {
-			Arrays.sort(tmp, firstLoadPos, pos + 1);
-		}
-
-		programHeaders = tmp;
-
-		e_phnum = programHeaders.length;
-
-	}
-
 	/**
 	 * @see ghidra.app.util.bin.format.Writeable#write(java.io.RandomAccessFile, ghidra.util.DataConverter)
 	 */
@@ -1924,22 +1742,6 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 		raf.write(dc.getBytes((short) e_shnum));
 		raf.write(dc.getBytes((short) e_shstrndx));
-	}
-
-	/**
-	 * Sets the section header offset.
-	 * @param offset the new section header offset
-	 */
-	public void setSectionHeaderOffset(long offset) {
-		this.e_shoff = offset;
-	}
-
-	/**
-	 * Sets the program header offset.
-	 * @param offset the new program header offset
-	 */
-	public void setProgramHeaderOffset(long offset) {
-		this.e_phoff = offset;
 	}
 
 }
