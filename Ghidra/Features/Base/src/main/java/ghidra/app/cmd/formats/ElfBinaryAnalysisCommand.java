@@ -16,6 +16,7 @@
 package ghidra.app.cmd.formats;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -138,7 +139,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 		Memory memory = currentProgram.getMemory();
 
-		ElfSectionHeader[] stringSections = elf.getSections(ElfSectionHeaderConstants.SHT_STRTAB);
+		List<ElfSectionHeader> stringSections = elf.getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_STRTAB);
 		for (ElfSectionHeader stringSection : stringSections) {
 			monitor.checkCanceled();
 			try {
@@ -173,12 +174,13 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 	}
 
 	private void processSectionHeaders(ElfHeader elf, Listing listing) throws Exception {
-		ElfSectionHeader[] sections = elf.getSections();
-		for (int i = 0; i < sections.length; i++) {
+		List<ElfSectionHeader> sections = elf.getSections();
+		for (int i = 0; i < sections.size(); i++) {
+			ElfSectionHeader section = sections.get(i);
 			monitor.checkCanceled();
-			String name = sections[i].getNameAsString();
+			String name = section.getNameAsString();
 
-			DataType sectionDT = sections[i].toDataType();
+			DataType sectionDT = section.toDataType();
 			long offset = elf.e_shoff() + (i * elf.e_shentsize());
 			Address sectionStart = addr(offset);
 
@@ -187,15 +189,15 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 			CodeUnit cu = listing.getCodeUnitAt(addr(offset));
 			cu.setComment(CodeUnit.PLATE_COMMENT,
-				"#" + i + ") " + name + " at 0x" + Long.toHexString(sections[i].getVirtualAddress()));
+				"#" + i + ") " + name + " at 0x" + Long.toHexString(section.getVirtualAddress()));
 
-			if (sections[i].getType() == ElfSectionHeaderConstants.SHT_NOBITS ||
-				sections[i].getMemorySize() == 0 || sections[i].isInvalidOffset()) {
+			if (section.getType() == ElfSectionHeaderConstants.SHT_NOBITS ||
+				section.getMemorySize() == 0 || section.isInvalidOffset()) {
 				continue;
 			}
 
-			Address dataStart = addr(sections[i].getFileOffset());
-			createFragment(name + "_DATA", dataStart, sections[i].getMemorySize());
+			Address dataStart = addr(section.getFileOffset());
+			createFragment(name + "_DATA", dataStart, section.getMemorySize());
 
 			try {
 				createLabel(dataStart, name, true, SourceType.ANALYSIS);
@@ -205,8 +207,8 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 			}
 
 			cu = listing.getCodeUnitAt(dataStart);
-			cu.setComment(CodeUnit.PRE_COMMENT, sections[i].getNameAsString() + " Size: 0x" +
-				Long.toHexString(sections[i].getMemorySize()));
+			cu.setComment(CodeUnit.PRE_COMMENT, section.getNameAsString() + " Size: 0x" +
+				Long.toHexString(section.getMemorySize()));
 		}
 	}
 
@@ -218,7 +220,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 			return;
 		}
 
-		Structure phStructDt = (Structure) elf.getProgramHeaders()[0].toDataType();
+		Structure phStructDt = (Structure) elf.getProgramHeaders().get(0).toDataType();
 		phStructDt = phStructDt.clone(listing.getDataTypeManager());
 		Array arrayDt = new ArrayDataType(phStructDt, headerCount, size);
 
@@ -226,22 +228,22 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 		createFragment(phStructDt.getName(), array.getMinAddress(), array.getLength());
 
-		ElfProgramHeader[] programHeaders = elf.getProgramHeaders();
-		for (int i = 0; i < programHeaders.length; i++) {
+		List<ElfProgramHeader> programHeaders = elf.getProgramHeaders();
+		for (int i = 0; i < programHeaders.size(); i++) {
+			ElfProgramHeader programHeader = programHeaders.get(i);
 			monitor.checkCanceled();
 			Data d = array.getComponent(i);
-			d.setComment(CodeUnit.EOL_COMMENT, programHeaders[i].getComment());
+			d.setComment(CodeUnit.EOL_COMMENT, programHeader.getComment());
 
-			Address addr = addr(programHeaders[i].getFileOffset());
+			Address addr = addr(programHeader.getFileOffset());
 
-			createLabel(addr, programHeaders[i].getTypeAsString(), true, SourceType.ANALYSIS);
+			createLabel(addr, programHeader.getTypeAsString(), true, SourceType.ANALYSIS);
 		}
 	}
 
 	private void processInterpretor(ElfHeader elf, ByteProvider provider, Program program)
 			throws CancelledException {
-		for (ElfProgramHeader programHeader : elf.getProgramHeaders(
-			ElfProgramHeaderConstants.PT_INTERP)) {
+		for (ElfProgramHeader programHeader : elf.getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_INTERP)) {
 			monitor.checkCanceled();
 			long offset = programHeader.getFileOffset();
 			if (offset == 0) {
@@ -335,7 +337,8 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 		long dynamicRefAddr = dynamic.getValue();
 
-		ElfProgramHeader programLoadHeader = elf.getProgramLoadHeaderContaining(dynamicRefAddr);
+		ElfProgramHeader programLoadHeader = elf.getProgramHeader(
+			ElfProgramHeader.isProgramLoadHeaderContaining(dynamicRefAddr));
 		if (programLoadHeader == null) {
 			return; // unable to find loaded
 		}

@@ -16,6 +16,7 @@
 package ghidra.app.util.bin.format.elf;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -200,12 +201,12 @@ public class ElfSymbol implements ByteArrayConverter {
 
 		if (st_name == 0) {
 			if (getType() == STT_SECTION) {
-				ElfSectionHeader[] sections = header.getSections();
+				List<ElfSectionHeader> sections = header.getSections();
 				// FIXME: handle extended section indexing
 				int uSectionIndex = Short.toUnsignedInt(st_shndx);
 				if (Short.compareUnsigned(st_shndx, ElfSectionHeaderConstants.SHN_LORESERVE) < 0 &&
-					uSectionIndex < sections.length) {
-					ElfSectionHeader section = sections[uSectionIndex];
+					uSectionIndex < sections.size()) {
+					ElfSectionHeader section = sections.get(uSectionIndex);
 					nameAsString = section.getNameAsString();
 				}
 			}

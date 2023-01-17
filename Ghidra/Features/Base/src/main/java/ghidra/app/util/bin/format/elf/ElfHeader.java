@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import ghidra.app.util.bin.*;
@@ -137,7 +138,8 @@ public class ElfHeader implements StructConverter, Writeable {
 			}
 		}
 
-		ElfProgramHeader loadHeader = getProgramLoadHeaderContaining(address);
+		ElfProgramHeader loadHeader = getProgramHeader(
+			ElfProgramHeader.isProgramLoadHeaderContaining(address));
 		if (loadHeader == null || loadHeader.getMemorySize() < length) {
 			throw new NotFoundException("No program header found covering " + length + " bytes at 0x" + Long.toHexString(address));
 		}
@@ -397,16 +399,16 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private void parseGNU_d() {
-		ElfSectionHeader[] sections = getSections(ElfSectionHeaderConstants.SHT_GNU_verdef);
-		if (sections.length == 0) {
+		List<ElfSectionHeader> sections = getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_GNU_verdef);
+		if (sections.size() == 0) {
 			return;
 		}
 		//TODO: ElfSectionHeader gnuVersionD = sections[0];
 	}
 
 	private void parseGNU_r() {
-		ElfSectionHeader[] sections = getSections(ElfSectionHeaderConstants.SHT_GNU_verneed);
-		if (sections.length == 0) {
+		List<ElfSectionHeader> sections = getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_GNU_verneed);
+		if (sections.size() == 0) {
 			return;
 		}
 		//TODO ElfSectionHeader gnuVersionR = sections[0];
@@ -662,27 +664,27 @@ public class ElfHeader implements StructConverter, Writeable {
 
 	private void parseDynamicTable() throws IOException {
 		ElfFileSection dynamicFileSection = null;
-		ElfSectionHeader[] dynamicSections = getSections(ElfSectionHeaderConstants.SHT_DYNAMIC);
+		List<ElfSectionHeader> dynamicSections = getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_DYNAMIC);
 
-		if (dynamicSections.length >= 1) {
-			dynamicFileSection = dynamicSections[0];
+		if (dynamicSections.size() >= 1) {
+			dynamicFileSection = dynamicSections.get(0);
 
-			if (dynamicSections.length > 1) {
+			if (dynamicSections.size() > 1) {
 				errorConsumer.accept("Multiple ELF dynamic sections found");
 			}
 		}
 		else {
 			try {
-				ElfProgramHeader[] dynamicHeaders = getProgramHeaders(ElfProgramHeaderConstants.PT_DYNAMIC);
+				List<ElfProgramHeader> dynamicHeaders = getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_DYNAMIC);
 
-				if (dynamicHeaders.length >= 1) {
-					long vaddr = dynamicHeaders[0].getVirtualAddress();
-					long size = dynamicHeaders[0].getMemorySize();
+				if (dynamicHeaders.size() >= 1) {
+					long vaddr = dynamicHeaders.get(0).getVirtualAddress();
+					long size = dynamicHeaders.get(0).getMemorySize();
 					long entrySize = is32Bit() ? 8 : 16;
 
 					dynamicFileSection = findFileSection(vaddr, size, entrySize);
 
-					if (dynamicHeaders.length > 1) {
+					if (dynamicHeaders.size() > 1) {
 						errorConsumer.accept("Multiple ELF dynamic table program headers found");
 					}
 				}
@@ -782,7 +784,8 @@ public class ElfHeader implements StructConverter, Writeable {
 
 				ElfDynamicType dynamicHashType = getDynamicHashTableType();
 				long dynamicHashTableAddr = adjustAddressForPrelink(dynamicTable.getDynamicValue(dynamicHashType));
-				ElfProgramHeader hashTableLoadHeader = getProgramLoadHeaderContaining(dynamicHashTableAddr);
+				ElfProgramHeader hashTableLoadHeader = getProgramHeader(
+					ElfProgramHeader.isProgramLoadHeaderContaining(dynamicHashTableAddr));
 				if (hashTableLoadHeader == null) {
 					throw new NotFoundException("Couldn't find program header containing dynamic hash table");
 				}
@@ -813,7 +816,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 		// Note: we might not be able to recover the full symbol count from dynamic data alone in some cases with
 		// GNU_HASH, which results in a truncated dynamic symbol table. Recover from the DYNSYM section if we can.
-		for (ElfFileSection dynsym : getSections(ElfSectionHeaderConstants.SHT_DYNSYM)) {
+		for (ElfFileSection dynsym : getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_DYNSYM)) {
 			if (dynsym != null && dynsym.getVirtualAddress() == dynamicSymbolFileSection.getVirtualAddress() &&
 					dynsym.getMemorySize() > dynamicSymbolFileSection.getMemorySize()) {
 				dynamicSymbolFileSection = dynsym;
@@ -1327,124 +1330,54 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * Returns the section headers as defined in this ELF file.
 	 * @return the section headers as defined in this ELF file
 	 */
-	public ElfSectionHeader[] getSections() {
-		return (ElfSectionHeader[]) sectionHeaders.toArray();
+	public List<ElfSectionHeader> getSections() {
+		return Collections.unmodifiableList(sectionHeaders);
 	}
 
 	/**
-	 * Returns the section headers with the specified type.
-	 * The array could be zero-length, but will not be null.
-	 * @param type section type
-	 * @return the section headers with the specified type
+	 * Returns the section headers matching the predicate.
+	 * @param predicate predicate for section
+	 * @return the section headers matching the predicate
 	 * @see ElfSectionHeader
 	 */
-	public ElfSectionHeader[] getSections(int type) {
-		ArrayList<ElfSectionHeader> list = new ArrayList<>();
-		for (ElfSectionHeader sectionHeader : sectionHeaders) {
-			if (sectionHeader.getType() == type) {
-				list.add(sectionHeader);
-			}
-		}
-		ElfSectionHeader[] sections = new ElfSectionHeader[list.size()];
-		list.toArray(sections);
-		return sections;
+	public List<ElfSectionHeader> getSections(Predicate<ElfSectionHeader> predicate) {
+		return sectionHeaders.stream().filter(predicate).toList();
 	}
 
 	/**
-	 * Returns the section header with the specified name, or null
-	 * if no section exists with that name.
-	 * @param name the name of the requested section
-	 * @return the section header with the specified name
+	 * Returns the first section header matching the predicate, or null.
+	 * @param predicate for section
+	 * @return the section header matching the predicate
 	 */
-	public ElfSectionHeader getSection(String name) {
-		List<ElfSectionHeader> list = new ArrayList<>();
-		for (ElfSectionHeader sectionHeader : sectionHeaders) {
-			if (name != null && name.equals(sectionHeader.getNameAsString())) {
-				list.add(sectionHeader);
-			}
-		}
-		if (list.size() == 0) {
-			return null;
-		}
-		if (list.size() > 1) {
-			throw new RuntimeException(">1 section with name of " + name);
-		}
-		return list.get(0);
-	}
-
-	/**
-	 * Returns the section header that loads/contains the specified address,
-	 * or null if no section contains the address.
-	 * @param address the address of the requested section
-	 * @return the section header that contains the address
-	 */
-	public ElfSectionHeader getSectionLoadHeaderContaining(long address) {
-// FIXME: verify 
-		for (ElfSectionHeader sectionHeader : sectionHeaders) {
-			if (!sectionHeader.isAlloc()) {
-				continue;
-			}
-			long start = sectionHeader.getVirtualAddress();
-			long end = start + sectionHeader.getFileSize();
-			if (start <= address && address <= end) {
-				return sectionHeader;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Returns the section header which fully contains the specified file offset range.
-	 * @param fileOffset file offset
-	 * @param fileRangeLength length of file range in bytes
-	 * @return section or null if not found
-	 */
-	public ElfSectionHeader getSectionHeaderContainingFileRange(long fileOffset,
-			long fileRangeLength) {
-		long maxOffset = fileOffset + fileRangeLength - 1;
-		for (ElfSectionHeader section : sectionHeaders) {
-			if (section.getType() == ElfSectionHeaderConstants.SHT_NULL ||
-				section.isInvalidOffset()) {
-				continue;
-			}
-			long size = section.getFileSize();
-			if (size == 0) {
-				continue;
-			}
-			long start = section.getFileOffset();
-			long end = start + size - 1;
-			if (fileOffset >= start && maxOffset <= end) {
-				return section;
-			}
-		}
-		return null;
+	public ElfSectionHeader getSection(Predicate<ElfSectionHeader> predicate) {
+		return sectionHeaders.stream().filter(predicate).findFirst().orElse(null);
 	}
 
 	/**
 	 * Returns the program headers as defined in this ELF file.
 	 * @return the program headers as defined in this ELF file
 	 */
-	public ElfProgramHeader[] getProgramHeaders() {
-		return (ElfProgramHeader[]) programHeaders.toArray();
+	public List<ElfProgramHeader> getProgramHeaders() {
+		return Collections.unmodifiableList(programHeaders);
 	}
 
 	/**
-	 * Returns the program headers with the specified type.
-	 * The array could be zero-length, but will not be null.
-	 * @param type program header type
-	 * @return the program headers with the specified type
+	 * Returns the program headers matching the predicate.
+	 * @param predicate predicate for program header
+	 * @return the program headers matching the predicate
 	 * @see ElfProgramHeader
 	 */
-	public ElfProgramHeader[] getProgramHeaders(int type) {
-		ArrayList<ElfProgramHeader> list = new ArrayList<>();
-		for (ElfProgramHeader programHeader : programHeaders) {
-			if (programHeader.getType() == type) {
-				list.add(programHeader);
-			}
-		}
-		ElfProgramHeader[] arr = new ElfProgramHeader[list.size()];
-		list.toArray(arr);
-		return arr;
+	public List<ElfProgramHeader> getProgramHeaders(Predicate<ElfProgramHeader> predicate) {
+		return programHeaders.stream().filter(predicate).toList();
+	}
+
+	/**
+	 * Returns the first program header matching the predicate, or null.
+	 * @param predicate for program header
+	 * @return the program header matching the predicate
+	 */
+	public ElfProgramHeader getProgramHeader(Predicate<ElfProgramHeader> predicate) {
+		return programHeaders.stream().filter(predicate).findFirst().orElse(null);
 	}
 
 	/**
@@ -1454,48 +1387,6 @@ public class ElfHeader implements StructConverter, Writeable {
 	 */
 	public ElfDynamicTable getDynamicTable() {
 		return dynamicTable;
-	}
-
-	/**
-	 * Returns the PT_LOAD program header which loads a range containing 
-	 * the specified address, or null if not found.
-	 * @param virtualAddr the address of the requested program header
-	 * @return the program header with the specified address
-	 */
-	public ElfProgramHeader getProgramLoadHeaderContaining(long virtualAddr) {
-		for (ElfProgramHeader programHeader : programHeaders) {
-			if (programHeader.getType() != ElfProgramHeaderConstants.PT_LOAD) {
-				continue;
-			}
-			long start = programHeader.getVirtualAddress();
-			long end = programHeader.getAdjustedMemorySize() - 1 + start;
-			if (virtualAddr >= start && virtualAddr <= end) {
-				return programHeader;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Returns the PT_LOAD program header which loads a range containing 
-	 * the specified file offset, or null if not found.
-	 * @param offset the file offset to be loaded
-	 * @return the program header with the specified file offset
-	 */
-	public ElfProgramHeader getProgramLoadHeaderContainingFileOffset(long offset) {
-		for (ElfProgramHeader programHeader : programHeaders) {
-			if (programHeader == null ||
-				programHeader.getType() != ElfProgramHeaderConstants.PT_LOAD ||
-				programHeader.isInvalidOffset()) {
-				continue;
-			}
-			long start = programHeader.getFileOffset();
-			long end = start + (programHeader.getFileSize() - 1);
-			if (offset >= start && offset <= end) {
-				return programHeader;
-			}
-		}
-		return null;
 	}
 
 	/**

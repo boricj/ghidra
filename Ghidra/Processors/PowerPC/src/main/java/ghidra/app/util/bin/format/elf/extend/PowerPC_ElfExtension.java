@@ -280,8 +280,7 @@ public class PowerPC_ElfExtension extends ElfExtension {
 		ElfHeader elf = elfLoadHelper.getElfHeader();
 		if (elf.getSectionHeaderCount() != 0) {
 			// Rely on section headers if present
-			for (ElfSectionHeader section : elf.getSections(
-				ElfSectionHeaderConstants.SHT_PROGBITS)) {
+			for (ElfSectionHeader section : elf.getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_PROGBITS)) {
 				monitor.checkCanceled();
 				if ((section.getFlags() & SHF_PPC_VLE) == 0) {
 					continue;
@@ -290,8 +289,7 @@ public class PowerPC_ElfExtension extends ElfExtension {
 			}
 		}
 		else {
-			for (ElfProgramHeader segment : elf.getProgramHeaders(
-				ElfProgramHeaderConstants.PT_LOAD)) {
+			for (ElfProgramHeader segment : elf.getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_LOAD)) {
 				monitor.checkCanceled();
 				if ((segment.getFlags() & PF_PPC_VLE) == 0) {
 					continue;

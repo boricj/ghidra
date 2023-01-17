@@ -16,7 +16,8 @@
 package ghidra.app.util.bin.format.elf;
 
 import java.util.HashMap;
-
+import java.util.List;
+import java.util.function.Predicate;
 import java.io.*;
 
 import ghidra.app.util.bin.BinaryReader;
@@ -344,14 +345,15 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	}
 
 	void updateName() {
-		ElfSectionHeader[] sections = header.getSections();
+		List<ElfSectionHeader> sections = header.getSections();
 		int e_shstrndx = header.e_shstrndx();
 		name = null;
 		try {
-			if (sh_name >= 0 && e_shstrndx > 0 && e_shstrndx < sections.length) {
+			if (sh_name >= 0 && e_shstrndx > 0 && e_shstrndx < sections.size()) {
+				ElfSectionHeader section = sections.get(e_shstrndx);
 				// read section name from string table
-				if (!sections[e_shstrndx].isInvalidOffset()) {
-					BinaryReader reader = sections[e_shstrndx].getReader();
+				if (!section.isInvalidOffset()) {
+					BinaryReader reader = section.getReader();
 					if (sh_name < reader.length()) {
 						name = reader.readAsciiString(sh_name);
 						if ("".equals(name)) {
@@ -366,8 +368,8 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 		}
 		if (name == null) {
 			name = "NO-NAME";
-			for (int i = 0; i < sections.length; ++i) {//find this section's index
-				if (sections[i] == this) {
+			for (int i = 0; i < sections.size(); ++i) {//find this section's index
+				if (sections.get(i) == this) {
 					name = "SECTION" + i;
 					break;
 				}
@@ -664,4 +666,55 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 			sh_entsize == other.sh_entsize;
 	}
 
+	/**
+	 * Returns a predicate for sections which loads/contains the specified address.
+	 * @param address the address of the requested section
+	 * @return predicate
+	 */
+	public static Predicate<ElfSectionHeader> isSectionLoadHeaderContaining(long address) {
+		Predicate<ElfSectionHeader> predicate = section -> {
+			// FIXME: verify
+			if (section.isAlloc()) {
+				long start = section.getVirtualAddress();
+				long end = start + section.getFileSize();
+				if (start <= address && address <= end) {
+					return true;
+				}
+			}
+
+			return false;
+		};
+
+		return predicate;
+	}
+
+	/**
+	 * Returns a predicate for sections which fully contains the specified file offset range.
+	 * @param fileOffset file offset
+	 * @param fileRangeLength length of file range in bytes
+	 * @return predicate
+	 */
+	public static Predicate<ElfSectionHeader> isSectionHeaderContainingFileRange(long fileOffset,
+			long fileRangeLength) {
+		long maxOffset = fileOffset + fileRangeLength - 1;
+		Predicate<ElfSectionHeader> predicate = section -> {
+			if (section.getType() == ElfSectionHeaderConstants.SHT_NULL ||
+				section.isInvalidOffset()) {
+				return false;
+			}
+
+			long size = section.getFileSize();
+			if (size >= 0) {
+				long start = section.getFileOffset();
+				long end = start + size - 1;
+				if (fileOffset >= start && maxOffset <= end) {
+					return true;
+				}
+			}
+
+			return false;
+		};
+
+		return predicate;
+	}
 }

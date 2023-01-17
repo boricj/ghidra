@@ -141,8 +141,8 @@ public class ElfDefaultGotPltMarkup {
 			long relocTableAddr =
 				elf.adjustAddressForPrelink(dynamicTable.getDynamicValue(pltGotRelType));
 
-			ElfProgramHeader relocTableLoadHeader =
-				elf.getProgramLoadHeaderContaining(relocTableAddr);
+			ElfProgramHeader relocTableLoadHeader = elf.getProgramHeader(
+				ElfProgramHeader.isProgramLoadHeaderContaining(relocTableAddr));
 			if (relocTableLoadHeader == null || relocTableLoadHeader.isInvalidOffset()) {
 				return;
 			}

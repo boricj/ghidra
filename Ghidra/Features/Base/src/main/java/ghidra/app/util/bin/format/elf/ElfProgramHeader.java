@@ -16,7 +16,7 @@
 package ghidra.app.util.bin.format.elf;
 
 import java.util.HashMap;
-
+import java.util.function.Predicate;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
@@ -349,7 +349,7 @@ public class ElfProgramHeader
 	 * addresses defined by the PT_DYNAMIC section.
 	 * @param virtualAddress a memory address which has already had the PRElink adjustment applied
 	 * @return computed file offset or -1 if virtual address not contained within this header
-	 * @see ElfHeader#getProgramLoadHeaderContaining(long) for obtaining PT_LOAD segment which contains
+	 * @see ElfProgramHeader#isProgramLoadHeaderContaining(long) for obtaining PT_LOAD segment which contains
 	 * virtualAddress
 	 */
 	public long getOffset(long virtualAddress) { // TODO: addressable unit size to byte offset may be a problem
@@ -517,5 +517,53 @@ public class ElfProgramHeader
 		return reader == other.reader && p_type == other.p_type && p_flags == other.p_flags &&
 			p_offset == other.p_offset && p_vaddr == other.p_vaddr && p_paddr == other.p_paddr &&
 			p_filesz == other.p_filesz && p_memsz == other.p_memsz && p_align == other.p_align;
+	}
+
+	/**
+	 * Returns a predicate matching a PT_LOAD program header which loads a range
+	 * containing the specified address.
+	 * @param virtualAddr the address of the requested program header
+	 * @return predicate
+	 */
+	public static Predicate<ElfProgramHeader> isProgramLoadHeaderContaining(long virtualAddr) {
+		Predicate<ElfProgramHeader> predicate = segment -> {
+			if (segment.getType() == ElfProgramHeaderConstants.PT_LOAD) {
+				long start = segment.getVirtualAddress();
+				long end = segment.getAdjustedMemorySize() - 1 + start;
+				if (virtualAddr >= start && virtualAddr <= end) {
+					return true;
+				}
+			}
+
+			return false;
+		};
+
+		return predicate;
+	}
+
+	/**
+	 * Returns a predicate matching a PT_LOAD program header which loads a range
+	 * containing the specified file offset.
+	 * @param offset the file offset to be loaded
+	 * @return predicate
+	 */
+	public static Predicate<ElfProgramHeader> isProgramLoadHeaderContainingFileOffset(long offset) {
+		Predicate<ElfProgramHeader> predicate = segment -> {
+			if (segment == null ||
+				segment.getType() != ElfProgramHeaderConstants.PT_LOAD ||
+				segment.isInvalidOffset()) {
+				return false;
+			}
+
+			long start = segment.getFileOffset();
+			long end = start + (segment.getFileSize() - 1);
+			if (offset >= start && offset <= end) {
+				return true;
+			}
+
+			return false;
+		};
+
+		return predicate;
 	}
 }

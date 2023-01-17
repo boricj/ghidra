@@ -86,7 +86,7 @@ public class ARM_ElfExtension extends ElfExtension {
 		boolean enablePcBiasOption = false;
 
 		// Enable PC Bias use if Green Hills (GHS) detected
-		ElfSectionHeader section = elf.getSection(".ghsinfo");
+		ElfSectionHeader section = elf.getSection(e -> e.getNameAsString().equals(".ghsinfo"));
 		if (section != null) {
 			enablePcBiasOption = true;
 		}

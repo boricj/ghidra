@@ -237,7 +237,7 @@ public class PowerPC64_ElfExtension extends ElfExtension {
 			throws CancelledException {
 
 		ElfHeader elf = elfLoadHelper.getElfHeader();
-		ElfSectionHeader pltSection = elf.getSection(ElfSectionHeaderConstants.dot_plt);
+		ElfSectionHeader pltSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionHeaderConstants.dot_plt));
 		if (pltSection == null) {
 			return;
 		}
