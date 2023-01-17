@@ -436,7 +436,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		props.setBoolean(RelocationTable.RELOCATABLE_PROP_NAME, isRelocatable);
 
 		int fileIndex = 0;
-		ElfSymbolTable[] symbolTables = elf.getSymbolTables();
+		List<ElfSymbolTable> symbolTables = elf.getSymbolTables();
 		for (ElfSymbolTable symbolTable : symbolTables) {
 			monitor.checkCanceled();
 			String[] files = symbolTable.getSourceFiles();
@@ -450,7 +450,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		int libraryIndex = 0;
 		ElfDynamicTable dynamicTable = elf.getDynamicTable();
 		if (dynamicTable != null) {
-			String[] neededLibs = elf.getDynamicLibraryNames();
+			List<String> neededLibs = elf.getDynamicLibraryNames();
 			for (String neededLib : neededLibs) {
 				monitor.checkCanceled();
 				props.setString(
@@ -767,7 +767,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		ExternalManager extManager = program.getExternalManager();
 		ElfDynamicTable dynamicTable = elf.getDynamicTable();
 		if (dynamicTable != null) {
-			String[] neededLibs = elf.getDynamicLibraryNames();
+			List<String> neededLibs = elf.getDynamicLibraryNames();
 			for (String neededLib : neededLibs) {
 				try {
 					extManager.setExternalPath(neededLib, null, false);
@@ -781,8 +781,8 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private void processRelocations(TaskMonitor monitor) throws CancelledException {
 
-		ElfRelocationTable[] relocationTables = elf.getRelocationTables();
-		if (relocationTables.length == 0) {
+		List<ElfRelocationTable> relocationTables = elf.getRelocationTables();
+		if (relocationTables.size() == 0) {
 			return;
 		}
 
@@ -1437,7 +1437,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		HashMap<Address, Integer> dataAllocationMap = new HashMap<>();
 
 		List<ElfSymbolTable> symbolTables = new ArrayList<>();
-		symbolTables.addAll(List.of(elf.getSymbolTables()));
+		symbolTables.addAll(elf.getSymbolTables());
 		symbolTables.addAll(getGnuDebugDataSymbolTables(monitor));
 
 
@@ -1507,14 +1507,14 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 						ElfHeader minidebugElf = new ElfHeader(debugDataBP, null);
 
-						ElfSymbolTable[] minidebugSymbolTables = minidebugElf.getSymbolTables();
+						List<ElfSymbolTable> minidebugSymbolTables = minidebugElf.getSymbolTables();
 						int debugSymbolsCount = 0;
 						for (ElfSymbolTable symTable : minidebugSymbolTables) {
 							debugSymbolsCount += symTable.getSymbols().length;
 						}
 						log(String.format("Found %d symbols in .gnu_debugdata", debugSymbolsCount));
 
-						return List.of(minidebugSymbolTables);
+						return minidebugSymbolTables;
 					}
 				}
 				finally {
@@ -2628,7 +2628,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		monitor.setMessage("Processing string tables...");
 		monitor.setShowProgressValue(false);
 
-		ElfStringTable[] stringTables = elf.getStringTables();
+		List<ElfStringTable> stringTables = elf.getStringTables();
 
 		long totalLength = 0;
 		for (ElfStringTable stringTable : stringTables) {

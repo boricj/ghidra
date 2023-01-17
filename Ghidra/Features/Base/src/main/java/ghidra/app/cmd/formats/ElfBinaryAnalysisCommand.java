@@ -360,7 +360,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 			throws CancelledException {
 		monitor.setMessage("Processing symbol tables...");
 
-		ElfSymbolTable[] symbolTables = elf.getSymbolTables();
+		List<ElfSymbolTable> symbolTables = elf.getSymbolTables();
 		for (ElfSymbolTable symbolTable2 : symbolTables) {
 			monitor.checkCanceled();
 
@@ -406,7 +406,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 	private void processRelocationTables(ElfHeader elf, Listing listing) throws CancelledException {
 		monitor.setMessage("Processing relocation tables...");
-		ElfRelocationTable[] relocationTables = elf.getRelocationTables();
+		List<ElfRelocationTable> relocationTables = elf.getRelocationTables();
 		for (ElfRelocationTable relocationTable : relocationTables) {
 			monitor.checkCanceled();
 			ElfFileSection relocationSection = relocationTable.getFileSection();

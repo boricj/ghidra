@@ -1390,11 +1390,11 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns array of dynamic library names defined by DT_NEEDED
-	 * @return array of dynamic library names
+	 * Returns list of dynamic library names defined by DT_NEEDED
+	 * @return list of dynamic library names
 	 */
-	public String[] getDynamicLibraryNames() {
-		return (String[]) dynamicLibraryNames.toArray();
+	public List<String> getDynamicLibraryNames() {
+		return Collections.unmodifiableList(dynamicLibraryNames);
 	}
 
 	/**
@@ -1409,8 +1409,8 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * Returns the string tables as defined in this ELF file.
 	 * @return the string tables as defined in this ELF file
 	 */
-	public ElfStringTable[] getStringTables() {
-		return (ElfStringTable[]) stringTables.toArray();
+	public List<ElfStringTable> getStringTables() {
+		return Collections.unmodifiableList(stringTables);
 	}
 
 	/**
@@ -1440,8 +1440,8 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * Returns the symbol tables as defined in this ELF file.
 	 * @return the symbol tables as defined in this ELF file
 	 */
-	public ElfSymbolTable[] getSymbolTables() {
-		return (ElfSymbolTable[]) symbolTables.toArray();
+	public List<ElfSymbolTable> getSymbolTables() {
+		return Collections.unmodifiableList(symbolTables);
 	}
 
 	/**
@@ -1466,8 +1466,8 @@ public class ElfHeader implements StructConverter, Writeable {
 	 * Returns the relocation tables as defined in this ELF file.
 	 * @return the relocation tables as defined in this ELF file
 	 */
-	public ElfRelocationTable[] getRelocationTables() {
-		return (ElfRelocationTable[]) relocationTables.toArray();
+	public List<ElfRelocationTable> getRelocationTables() {
+		return Collections.unmodifiableList(relocationTables);
 	}
 
 	/**
