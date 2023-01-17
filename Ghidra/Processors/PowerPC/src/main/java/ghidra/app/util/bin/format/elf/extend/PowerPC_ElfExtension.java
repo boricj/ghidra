@@ -170,7 +170,7 @@ public class PowerPC_ElfExtension extends ElfExtension {
 
 			MemoryBlock gotBlock = block;
 
-			if (!gotBlock.getName().startsWith(ElfSectionHeaderConstants.dot_got) ||
+			if (!gotBlock.getName().startsWith(ElfSectionConstants.dot_got) ||
 				!gotBlock.isExecute()) {
 				continue;
 			}
@@ -278,9 +278,9 @@ public class PowerPC_ElfExtension extends ElfExtension {
 		RegisterValue enableVLE = new RegisterValue(vleContextReg, BigInteger.ONE);
 
 		ElfHeader elf = elfLoadHelper.getElfHeader();
-		if (elf.getSectionHeaderCount() != 0) {
+		if (elf.getSectionCount() != 0) {
 			// Rely on section headers if present
-			for (ElfSectionHeader section : elf.getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_PROGBITS)) {
+			for (ElfSection section : elf.getSections(e -> e.getType() == ElfSectionConstants.SHT_PROGBITS)) {
 				monitor.checkCanceled();
 				if ((section.getFlags() & SHF_PPC_VLE) == 0) {
 					continue;

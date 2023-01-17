@@ -49,7 +49,7 @@ public class ElfSymbolTable implements ByteArrayConverter, StructConverter {
 	 * @param stringTable associated string table
 	 * @param symbolSectionIndexTable extended symbol section index table (may be null, used when 
 	 *           symbol <code>st_shndx == SHN_XINDEX</code>).  See 
-	 *           {@link ElfSymbol#getExtendedSectionHeaderIndex()}).
+	 *           {@link ElfSymbol#getExtendedSectionIndex()}).
 	 * @param isDynamic true if symbol table is the dynamic symbol table
 	 * @throws IOException if an IO or parse error occurs
 	 */
@@ -134,7 +134,7 @@ public class ElfSymbolTable implements ByteArrayConverter, StructConverter {
 	 * @return associated extended section index value or 0 if not defined.
 	 */
 	public int getExtendedSectionIndex(ElfSymbol sym) {
-		if (sym.getSectionHeaderIndex() == ElfSectionHeaderConstants.SHN_XINDEX &&
+		if (sym.getSectionIndex() == ElfSectionConstants.SHN_XINDEX &&
 			symbolSectionIndexTable != null) {
 			int symbolTableIndex = sym.getSymbolTableIndex();
 			if (symbolTableIndex < symbolSectionIndexTable.length) {
@@ -292,7 +292,7 @@ public class ElfSymbolTable implements ByteArrayConverter, StructConverter {
 //	private static String ST_VALUE_COMMENT = "value associated with symbol, usually an address";
 //	private static String ST_INFO_COMMENT = "type and binding attributes";
 //	private static String ST_OTHER_COMMENT = "0, no defined meaning";
-//	private static String ST_SHNDX_COMMENT = "index into string section header";
+//	private static String ST_SHNDX_COMMENT = "index into string section";
 
 	@Override
 	public DataType toDataType() throws DuplicateNameException {

@@ -15,9 +15,9 @@
  */
 package ghidra.app.util.bin.format.elf;
 
-public class ElfSectionHeaderConstants {
+public class ElfSectionConstants {
 
-	private ElfSectionHeaderConstants() {
+	private ElfSectionConstants() {
 	}
 
 	// Frequently used section names
@@ -50,7 +50,7 @@ public class ElfSectionHeaderConstants {
 
 	// Section Header Types 
 
-	/**Inactive section header*/
+	/**Inactive section*/
 	public static final int SHT_NULL = 0;
 	/**Program defined*/
 	public static final int SHT_PROGBITS = 1;

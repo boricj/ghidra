@@ -15,7 +15,7 @@
  */
 package ghidra.file.formats.android.oat;
 
-import ghidra.app.util.bin.format.elf.ElfSectionHeaderConstants;
+import ghidra.app.util.bin.format.elf.ElfSectionConstants;
 
 /**
  * https://android.googlesource.com/platform/art/+/master/runtime/oat.h
@@ -37,7 +37,7 @@ public final class OatConstants {
 	public final static String SYMBOL_OAT_EXEC                     =  "oatexec";
 	public final static String SYMBOL_OAT_LASTWORD                 =  "oatlastword";
 
-	public final static String OAT_SECTION_NAME = ElfSectionHeaderConstants.dot_rodata;
+	public final static String OAT_SECTION_NAME = ElfSectionConstants.dot_rodata;
 
 	public final static String DOT_OAT_PATCHES_SECTION_NAME = ".oat_patches";
 

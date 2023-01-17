@@ -46,7 +46,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	private static final int PAD_LENGTH = 7;
 
 	private HashMap<Integer, ElfSegmentType> programHeaderTypeMap;
-	private HashMap<Integer, ElfSectionHeaderType> sectionHeaderTypeMap;
+	private HashMap<Integer, ElfSectionType> sectionHeaderTypeMap;
 	private HashMap<Integer, ElfDynamicType> dynamicTypeMap;
 
 	private ElfLoadAdapter elfLoadAdapter = new ElfLoadAdapter();
@@ -64,20 +64,20 @@ public class ElfHeader implements StructConverter, Writeable {
 	private int e_version; //object file version
 	private long e_entry; //executable entry point
 	private long e_phoff; //segment table offset
-	private long e_shoff; //section header table offset
+	private long e_shoff; //section table offset
 	private int e_flags; //processor-specific flags
 	private short e_ehsize; //elf header size
 	private short e_phentsize; //size of entries in the segment table
 	private int e_phnum; //number of enties in the segment table (may be extended and may not be preserved)
-	private short e_shentsize; //size of entries in the section header table
-	private int e_shnum; //number of enties in the section header table (may be extended and may not be preserved)
+	private short e_shentsize; //size of entries in the section table
+	private int e_shnum; //number of enties in the section table (may be extended and may not be preserved)
 	private int e_shstrndx; //section index of the section name string table (may be extended and may not be preserved)
 
 	private Structure headerStructure;
 
 	private Long preLinkImageBase = null;
-	private ElfSectionHeader section0 = null;
-	private List<ElfSectionHeader> sectionHeaders = new ArrayList<>();
+	private ElfSection section0 = null;
+	private List<ElfSection> sectionHeaders = new ArrayList<>();
 	private List<ElfSegment> programHeaders = new ArrayList<>();
 	private List<ElfStringTable> stringTables = new ArrayList<>();
 	private List<ElfSymbolTable> symbolTables = new ArrayList<>();
@@ -116,7 +116,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 		parseSegments(reader);
 
-		parseSectionHeaders(reader);
+		parseSections(reader);
 
 		parseDynamicTable();
 
@@ -130,7 +130,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private ElfFileSection findFileSection(long address, long length, long entrySize) throws NotFoundException {
-		for (ElfSectionHeader sectionHeader : sectionHeaders) {
+		for (ElfSection sectionHeader : sectionHeaders) {
 			if (sectionHeader.getVirtualAddress() == address &&
 				sectionHeader.getMemorySize() == length &&
 				sectionHeader.getEntrySize() == entrySize) {
@@ -212,8 +212,8 @@ public class ElfHeader implements StructConverter, Writeable {
 			e_shstrndx = Short.toUnsignedInt(reader.readNextShort());
 
 			if (e_shnum == 0 ||
-				e_shnum >= Short.toUnsignedInt(ElfSectionHeaderConstants.SHN_LORESERVE)) {
-				e_shnum = readExtendedSectionHeaderCount(reader); // use extended stored section header count
+				e_shnum >= Short.toUnsignedInt(ElfSectionConstants.SHN_LORESERVE)) {
+				e_shnum = readExtendedSectionCount(reader); // use extended stored section count
 			}
 
 			if (e_phnum == Short.toUnsignedInt(ElfConstants.PN_XNUM)) {
@@ -223,8 +223,8 @@ public class ElfHeader implements StructConverter, Writeable {
 			if (e_shnum == 0) {
 				e_shstrndx = 0;
 			}
-			else if (e_shstrndx == Short.toUnsignedInt(ElfSectionHeaderConstants.SHN_XINDEX)) {
-				e_shstrndx = readExtendedSectionHeaderStringTableIndex(reader);
+			else if (e_shstrndx == Short.toUnsignedInt(ElfSectionConstants.SHN_XINDEX)) {
+				e_shstrndx = readExtendedSectionStringTableIndex(reader);
 			}
 
 			return reader;
@@ -234,27 +234,27 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 	}
 
-	private ElfSectionHeader getSection0(BinaryReader reader) throws IOException {
+	private ElfSection getSection0(BinaryReader reader) throws IOException {
 		if (section0 == null && e_shoff != 0) {
 			if (!providerContainsRegion(reader, e_shoff, e_shentsize)) {
 				return null;
 			}
 			reader.setPointerIndex(e_shoff);
-			section0 = new ElfSectionHeader(reader, this);
+			section0 = new ElfSection(reader, this);
 		}
 		return section0;
 	}
 
 	/**
-	 * Read extended segment count (e_phnum) stored in first section header (ST_NULL) 
+	 * Read extended segment count (e_phnum) stored in first section (ST_NULL) 
 	 * sh_info field value. This is done to overcome the short value limitation of the
 	 * e_phnum header field.  Returned value is restricted to the range 0..0x7fffffff.
 	 * @return extended segment count or 0 if not found or out of range
 	 * @throws IOException if file IO error occurs
 	 */
 	private int readExtendedSegmentCount(BinaryReader reader) throws IOException {
-		ElfSectionHeader s = getSection0(reader);
-		if (s != null && s.getType() == ElfSectionHeaderConstants.SHT_NULL) {
+		ElfSection s = getSection0(reader);
+		if (s != null && s.getType() == ElfSectionConstants.SHT_NULL) {
 			int val = s.sh_info;
 			return val < 0 ? 0 : val;
 		}
@@ -262,15 +262,15 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Read extended section header count (e_shnum) stored in first section header (ST_NULL) 
+	 * Read extended section count (e_shnum) stored in first section (ST_NULL) 
 	 * sh_size field value.  This is done to overcome the short value limitation of the
 	 * e_shnum header field.  Returned value is restricted to the range 0..0x7fffffff.
-	 * @return extended section header count or 0 if not found or out of range
+	 * @return extended section count or 0 if not found or out of range
 	 * @throws IOException if file IO error occurs
 	 */
-	private int readExtendedSectionHeaderCount(BinaryReader reader) throws IOException {
-		ElfSectionHeader s = getSection0(reader);
-		if (s != null && s.getType() == ElfSectionHeaderConstants.SHT_NULL) {
+	private int readExtendedSectionCount(BinaryReader reader) throws IOException {
+		ElfSection s = getSection0(reader);
+		if (s != null && s.getType() == ElfSectionConstants.SHT_NULL) {
 			long val = s.sh_size;
 			return (val < 0 || val > Integer.MAX_VALUE) ? 0 : (int) val;
 		}
@@ -278,15 +278,15 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Read extended section header string table index (e_shstrndx) stored in first section header 
+	 * Read extended section string table index (e_shstrndx) stored in first section 
 	 * (ST_NULL) sh_size field value.  This is done to overcome the short value limitation of the
 	 * e_shstrndx header field.  Returned value is restricted to the range 0..0x7fffffff.
-	 * @return extended section header count or 0 if not found or out of range
+	 * @return extended section count or 0 if not found or out of range
 	 * @throws IOException if file IO error occurs
 	 */
-	private int readExtendedSectionHeaderStringTableIndex(BinaryReader reader) throws IOException {
-		ElfSectionHeader s = getSection0(reader);
-		if (s != null && s.getType() == ElfSectionHeaderConstants.SHT_NULL) {
+	private int readExtendedSectionStringTableIndex(BinaryReader reader) throws IOException {
+		ElfSection s = getSection0(reader);
+		if (s != null && s.getType() == ElfSectionConstants.SHT_NULL) {
 			int val = s.sh_link;
 			return val < 0 ? 0 : val;
 		}
@@ -299,7 +299,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		ElfSegmentType.addDefaultTypes(programHeaderTypeMap);
 
 		sectionHeaderTypeMap = new HashMap<>();
-		ElfSectionHeaderType.addDefaultTypes(sectionHeaderTypeMap);
+		ElfSectionType.addDefaultTypes(sectionHeaderTypeMap);
 
 		dynamicTypeMap = new HashMap<>();
 		ElfDynamicType.addDefaultTypes(dynamicTypeMap);
@@ -307,7 +307,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		ElfLoadAdapter extensionAdapter = ElfExtensionFactory.getLoadAdapter(this);
 		if (extensionAdapter != null) {
 			extensionAdapter.addSegmentTypes(programHeaderTypeMap);
-			extensionAdapter.addSectionHeaderTypes(sectionHeaderTypeMap);
+			extensionAdapter.addSectionTypes(sectionHeaderTypeMap);
 			extensionAdapter.addDynamicTypes(dynamicTypeMap);
 			elfLoadAdapter = extensionAdapter;
 		}
@@ -358,7 +358,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		return programHeaderTypeMap;
 	}
 
-	protected HashMap<Integer, ElfSectionHeaderType> getSectionHeaderTypeMap() {
+	protected HashMap<Integer, ElfSectionType> getSectionTypeMap() {
 		return sectionHeaderTypeMap;
 	}
 
@@ -369,7 +369,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		return null; // not found
 	}
 
-	public ElfSectionHeaderType getSectionHeaderType(int type) {
+	public ElfSectionType getSectionType(int type) {
 		if (sectionHeaderTypeMap != null) {
 			return sectionHeaderTypeMap.get(type);
 		}
@@ -399,35 +399,35 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private void parseGNU_d() {
-		List<ElfSectionHeader> sections = getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_GNU_verdef);
+		List<ElfSection> sections = getSections(e -> e.getType() == ElfSectionConstants.SHT_GNU_verdef);
 		if (sections.size() == 0) {
 			return;
 		}
-		//TODO: ElfSectionHeader gnuVersionD = sections[0];
+		//TODO: ElfSection gnuVersionD = sections[0];
 	}
 
 	private void parseGNU_r() {
-		List<ElfSectionHeader> sections = getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_GNU_verneed);
+		List<ElfSection> sections = getSections(e -> e.getType() == ElfSectionConstants.SHT_GNU_verneed);
 		if (sections.size() == 0) {
 			return;
 		}
-		//TODO ElfSectionHeader gnuVersionR = sections[0];
+		//TODO ElfSection gnuVersionR = sections[0];
 	}
 
 	private class ElfRelocationTableBuilder {
 		public ElfFileSection fileSection;
 		public boolean addendTypeReloc;
 		public ElfSymbolTable symbolTable;
-		public ElfSectionHeader sectionToBeRelocated;
+		public ElfSection sectionToBeRelocated;
 		public ElfRelocationTable.TableFormat format;
 
-		public ElfRelocationTableBuilder(ElfSectionHeader section) throws NotFoundException {
+		public ElfRelocationTableBuilder(ElfSection section) throws NotFoundException {
 			this.fileSection = section;
 
 			int sectionHeaderType = section.getType();
 
-			this.addendTypeReloc = (sectionHeaderType == ElfSectionHeaderConstants.SHT_RELA ||
-				sectionHeaderType == ElfSectionHeaderConstants.SHT_ANDROID_RELA);
+			this.addendTypeReloc = (sectionHeaderType == ElfSectionConstants.SHT_RELA ||
+				sectionHeaderType == ElfSectionConstants.SHT_ANDROID_RELA);
 
 			int link = section.getLink(); // section index of associated symbol table
 			if (link == 0) {
@@ -435,20 +435,20 @@ public class ElfHeader implements StructConverter, Writeable {
 				symbolTable = dynamicSymbolTable;
 			}
 			else {
-				ElfSectionHeader symbolTableSection = getLinkedSection(link,
-					ElfSectionHeaderConstants.SHT_DYNSYM, ElfSectionHeaderConstants.SHT_SYMTAB);
+				ElfSection symbolTableSection = getLinkedSection(link,
+					ElfSectionConstants.SHT_DYNSYM, ElfSectionConstants.SHT_SYMTAB);
 				symbolTable = getSymbolTable(symbolTableSection);
 			}
 
 			int info = section.getInfo(); // section index of section to which relocations apply (relocation offset base)
 			this.sectionToBeRelocated = info != 0 ? getLinkedSection(info) : null;
 
-			if (sectionHeaderType == ElfSectionHeaderConstants.SHT_ANDROID_REL ||
-				sectionHeaderType == ElfSectionHeaderConstants.SHT_ANDROID_RELA) {
+			if (sectionHeaderType == ElfSectionConstants.SHT_ANDROID_REL ||
+				sectionHeaderType == ElfSectionConstants.SHT_ANDROID_RELA) {
 				this.format = TableFormat.ANDROID;
 			}
-			else if (sectionHeaderType == ElfSectionHeaderConstants.SHT_RELR ||
-				sectionHeaderType == ElfSectionHeaderConstants.SHT_ANDROID_RELR) {
+			else if (sectionHeaderType == ElfSectionConstants.SHT_RELR ||
+				sectionHeaderType == ElfSectionConstants.SHT_ANDROID_RELR) {
 				this.format = TableFormat.RELR;
 			}
 			else {
@@ -487,12 +487,12 @@ public class ElfHeader implements StructConverter, Writeable {
 		 * @param expectedTypes list of expectedTypes (may be omitted to accept any type)
 		 * @return section or null if not found
 		 */
-		private ElfSectionHeader getLinkedSection(int sectionIndex, int... expectedTypes)
+		private ElfSection getLinkedSection(int sectionIndex, int... expectedTypes)
 				throws NotFoundException {
 			if (sectionIndex < 0 || sectionIndex >= sectionHeaders.size()) {
 				throw new NotFoundException("invalid linked section index " + sectionIndex);
 			}
-			ElfSectionHeader section = sectionHeaders.get(sectionIndex);
+			ElfSection section = sectionHeaders.get(sectionIndex);
 			if (expectedTypes.length == 0) {
 				return section;
 			}
@@ -530,9 +530,9 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	private static Set<Integer> SECTION_HEADER_RELOCATION_TYPES =
-		Set.of(ElfSectionHeaderConstants.SHT_REL, ElfSectionHeaderConstants.SHT_RELA,
-			ElfSectionHeaderConstants.SHT_RELR, ElfSectionHeaderConstants.SHT_ANDROID_REL,
-			ElfSectionHeaderConstants.SHT_ANDROID_RELA, ElfSectionHeaderConstants.SHT_ANDROID_RELR);
+		Set.of(ElfSectionConstants.SHT_REL, ElfSectionConstants.SHT_RELA,
+			ElfSectionConstants.SHT_RELR, ElfSectionConstants.SHT_ANDROID_REL,
+			ElfSectionConstants.SHT_ANDROID_RELA, ElfSectionConstants.SHT_ANDROID_RELR);
 
 	private void parseRelocationTables() throws IOException {
 		ArrayList<ElfRelocationTableBuilder> relocationTableBuilderList = new ArrayList<>();
@@ -563,8 +563,8 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 
 		// In general the above dynamic relocation tables should cover most cases, we will
-		// check section headers for possible custom relocation tables
-		for (ElfSectionHeader section : sectionHeaders) {
+		// check sections for possible custom relocation tables
+		for (ElfSection section : sectionHeaders) {
 			if (SECTION_HEADER_RELOCATION_TYPES.contains(section.getType())) {
 				try {
 					relocationTableBuilderList.add(new ElfRelocationTableBuilder(section));
@@ -602,8 +602,8 @@ public class ElfHeader implements StructConverter, Writeable {
 
 			ElfFileSection fileSection = findFileSection(relocTableAddr, tableSize, tableEntrySize);
 
-			if (fileSection instanceof ElfSectionHeader) {
-				builder = new ElfRelocationTableBuilder((ElfSectionHeader) fileSection);
+			if (fileSection instanceof ElfSection) {
+				builder = new ElfRelocationTableBuilder((ElfSection) fileSection);
 			}
 			else {
 				builder =
@@ -664,7 +664,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 	private void parseDynamicTable() throws IOException {
 		ElfFileSection dynamicFileSection = null;
-		List<ElfSectionHeader> dynamicSections = getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_DYNAMIC);
+		List<ElfSection> dynamicSections = getSections(e -> e.getType() == ElfSectionConstants.SHT_DYNAMIC);
 
 		if (dynamicSections.size() >= 1) {
 			dynamicFileSection = dynamicSections.get(0);
@@ -717,7 +717,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		List<ElfFileSection> stringFileSections =
 			Stream.concat(
 				sectionHeaders.stream()
-					.filter(e -> e.getType() == ElfSectionHeaderConstants.SHT_STRTAB)
+					.filter(e -> e.getType() == ElfSectionConstants.SHT_STRTAB)
 					.map(e -> (ElfFileSection) e),
 				dynamicStringFileSection != null ? Stream.of(dynamicStringFileSection) : Stream.empty()
 			).distinct().toList();
@@ -732,21 +732,21 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 	}
 
-	private int[] getExtendedSymbolSectionIndexTable(ElfSectionHeader symbolTableSectionHeader) {
-		ElfSectionHeader symbolSectionIndexHeader = null;
+	private int[] getExtendedSymbolSectionIndexTable(ElfSection symbolTableSection) {
+		ElfSection symbolSectionIndexHeader = null;
 		int[] indexTable = null;
 
 		if (hasExtendedSymbolSectionIndexTable) {
 			// Find SHT_SYMTAB_SHNDX section linked to specified symbol table section
-			for (ElfSectionHeader section : sectionHeaders) {
-				if (section.getType() != ElfSectionHeaderConstants.SHT_SYMTAB_SHNDX) {
+			for (ElfSection section : sectionHeaders) {
+				if (section.getType() != ElfSectionConstants.SHT_SYMTAB_SHNDX) {
 					continue;
 				}
 				int linkIndex = section.getLink();
 				if (linkIndex <= 0 || linkIndex >= sectionHeaders.size()) {
 					continue;
 				}
-				if (sectionHeaders.get(linkIndex) == symbolTableSectionHeader) {
+				if (sectionHeaders.get(linkIndex) == symbolTableSection) {
 					symbolSectionIndexHeader = section;
 					break;
 				}
@@ -816,7 +816,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 		// Note: we might not be able to recover the full symbol count from dynamic data alone in some cases with
 		// GNU_HASH, which results in a truncated dynamic symbol table. Recover from the DYNSYM section if we can.
-		for (ElfFileSection dynsym : getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_DYNSYM)) {
+		for (ElfFileSection dynsym : getSections(e -> e.getType() == ElfSectionConstants.SHT_DYNSYM)) {
 			if (dynsym != null && dynsym.getVirtualAddress() == dynamicSymbolFileSection.getVirtualAddress() &&
 					dynsym.getMemorySize() > dynamicSymbolFileSection.getMemorySize()) {
 				dynamicSymbolFileSection = dynsym;
@@ -826,7 +826,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		List<ElfFileSection> symbolFileSections =
 			Stream.concat(
 				sectionHeaders.stream()
-					.filter(e -> e.getType() == ElfSectionHeaderConstants.SHT_SYMTAB || e.getType() == ElfSectionHeaderConstants.SHT_DYNSYM)
+					.filter(e -> e.getType() == ElfSectionConstants.SHT_SYMTAB || e.getType() == ElfSectionConstants.SHT_DYNSYM)
 					.map(e -> (ElfFileSection) e),
 					dynamicSymbolFileSection != null ? Stream.of(dynamicSymbolFileSection) : Stream.empty()
 			).distinct().toList();
@@ -836,17 +836,17 @@ public class ElfHeader implements StructConverter, Writeable {
 			int[] symbolSectionIndexTable;
 			ElfStringTable stringTable;
 
-			if (symbolFileSection instanceof ElfSectionHeader) {
-				ElfSectionHeader symbolTableSectionHeader = (ElfSectionHeader) symbolFileSection;
-				stringTable = getStringTable(sectionHeaders.get(symbolTableSectionHeader.getLink()));
+			if (symbolFileSection instanceof ElfSection) {
+				ElfSection symbolTableSection = (ElfSection) symbolFileSection;
+				stringTable = getStringTable(sectionHeaders.get(symbolTableSection.getLink()));
 
 				// get extended symbol section index table if present
-				symbolSectionIndexTable = getExtendedSymbolSectionIndexTable(symbolTableSectionHeader);
+				symbolSectionIndexTable = getExtendedSymbolSectionIndexTable(symbolTableSection);
 			}
 			else {
 				stringTable = dynamicStringTable;
 
-				// NOTE: When parsed from dynamic table and not found via section header parse
+				// NOTE: When parsed from dynamic table and not found via section parse
 				// it is assumed that the extended symbol section table is not used.
 				symbolSectionIndexTable = null;
 			}
@@ -958,22 +958,22 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 	}
 
-	protected void parseSectionHeaders(BinaryReader reader)
+	protected void parseSections(BinaryReader reader)
 			throws IOException {
 		boolean missing = false;
-		ElfSectionHeader[] sectionHeadersArray = new ElfSectionHeader[e_shnum];
+		ElfSection[] sectionHeadersArray = new ElfSection[e_shnum];
 		for (int i = 0; i < e_shnum; ++i) {
 			long index = e_shoff + (i * e_shentsize);
 			if (!missing && !providerContainsRegion(reader, index, e_shentsize)) {
 				int unreadCnt = e_shnum - i;
 				errorConsumer.accept(
 					unreadCnt + " of " + e_shnum +
-						" section headers are truncated/missing from file");
+						" sections are truncated/missing from file");
 				missing = true;
 			}
 			reader.setPointerIndex(index);
-			sectionHeadersArray[i] = new ElfSectionHeader(reader, this);
-			if (sectionHeadersArray[i].getType() == ElfSectionHeaderConstants.SHT_SYMTAB_SHNDX) {
+			sectionHeadersArray[i] = new ElfSection(reader, this);
+			if (sectionHeadersArray[i].getType() == ElfSectionConstants.SHT_SYMTAB_SHNDX) {
 				hasExtendedSymbolSectionIndexTable = true;
 			}
 		}
@@ -983,8 +983,8 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 
 		//note: we cannot retrieve all the names
-		//until after we have read all the section headers.
-		//this is because one of the section headers 
+		//until after we have read all the sections.
+		//this is because one of the sections 
 		//is a string table that contains the names of the sections.
 		for (int i = 0; i < e_shnum; ++i) {
 			sectionHeadersArray[i].updateName();
@@ -1238,38 +1238,38 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * This member holds the section header's size in bytes. A section header is one entry in
-	 * the section header table; all entries are the same size.
-	 * @return the section header's size in bytes
+	 * This member holds the section's size in bytes. A section is one entry in
+	 * the section table; all entries are the same size.
+	 * @return the section's size in bytes
 	 */
 	public short e_shentsize() {
 		return e_shentsize;
 	}
 
 	/**
-	 * This member holds the number of entries in the section header table. Thus the product
-	 * of e_shentsize and unsigned e_shnum gives the section header table's size in bytes. If a file
-	 * has no section header table, e_shnum holds the value zero.
-	 * @return the number of entries in the section header table
+	 * This member holds the number of entries in the section table. Thus the product
+	 * of e_shentsize and unsigned e_shnum gives the section table's size in bytes. If a file
+	 * has no section table, e_shnum holds the value zero.
+	 * @return the number of entries in the section table
 	 */
-	public int getSectionHeaderCount() {
+	public int getSectionCount() {
 		return e_shnum;
 	}
 
 	/**
-	 * This member holds the section header table's file offset in bytes. If the file has no section
+	 * This member holds the section table's file offset in bytes. If the file has no section
 	 * header table, this member holds zero.
-	 * @return the section header table's file offset in bytes
+	 * @return the section table's file offset in bytes
 	 */
 	public long e_shoff() {
 		return e_shoff;
 	}
 
 	/**
-	 * This member holds the section header table index of the entry associated with the section
+	 * This member holds the section table index of the entry associated with the section
 	 * name string table. If the file has no section name string table, this member holds
 	 * the value SHN_UNDEF.
-	 * @return the section header table index of the entry associated with the section name string table
+	 * @return the section table index of the entry associated with the section name string table
 	 */
 	public int e_shstrndx() {
 		return e_shstrndx;
@@ -1327,29 +1327,29 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the section headers as defined in this ELF file.
-	 * @return the section headers as defined in this ELF file
+	 * Returns the sections as defined in this ELF file.
+	 * @return the sections as defined in this ELF file
 	 */
-	public List<ElfSectionHeader> getSections() {
+	public List<ElfSection> getSections() {
 		return Collections.unmodifiableList(sectionHeaders);
 	}
 
 	/**
-	 * Returns the section headers matching the predicate.
+	 * Returns the sections matching the predicate.
 	 * @param predicate predicate for section
-	 * @return the section headers matching the predicate
-	 * @see ElfSectionHeader
+	 * @return the sections matching the predicate
+	 * @see ElfSection
 	 */
-	public List<ElfSectionHeader> getSections(Predicate<ElfSectionHeader> predicate) {
+	public List<ElfSection> getSections(Predicate<ElfSection> predicate) {
 		return sectionHeaders.stream().filter(predicate).toList();
 	}
 
 	/**
-	 * Returns the first section header matching the predicate, or null.
+	 * Returns the first section matching the predicate, or null.
 	 * @param predicate for section
-	 * @return the section header matching the predicate
+	 * @return the section matching the predicate
 	 */
-	public ElfSectionHeader getSection(Predicate<ElfSectionHeader> predicate) {
+	public ElfSection getSection(Predicate<ElfSection> predicate) {
 		return sectionHeaders.stream().filter(predicate).findFirst().orElse(null);
 	}
 
@@ -1414,12 +1414,12 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the string table associated to the specified section header.
+	 * Returns the string table associated to the specified section.
 	 * Or, null if one does not exist.
 	 * @param section section whose associated string table is requested
-	 * @return the string table associated to the specified section header
+	 * @return the string table associated to the specified section
 	 */
-	public ElfStringTable getStringTable(ElfSectionHeader section) {
+	public ElfStringTable getStringTable(ElfSection section) {
 		for (ElfStringTable stringTable : stringTables) {
 			if (stringTable.getFileSection().getFileOffset() == section.getFileOffset()) {
 				return stringTable;
@@ -1445,12 +1445,12 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the symbol table associated to the specified section header.
+	 * Returns the symbol table associated to the specified section.
 	 * Or, null if one does not exist.
-	 * @param symbolTableSection symbol table section header
-	 * @return the symbol table associated to the specified section header
+	 * @param symbolTableSection symbol table section
+	 * @return the symbol table associated to the specified section
 	 */
-	public ElfSymbolTable getSymbolTable(ElfSectionHeader symbolTableSection) {
+	public ElfSymbolTable getSymbolTable(ElfSection symbolTableSection) {
 		if (symbolTableSection == null) {
 			return null;
 		}
@@ -1471,12 +1471,12 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the relocation table associated to the specified section header,
+	 * Returns the relocation table associated to the specified section,
 	 * or null if one does not exist.
-	 * @param relocSection section header corresponding to relocation table
-	 * @return the relocation table associated to the specified section header
+	 * @param relocSection section corresponding to relocation table
+	 * @return the relocation table associated to the specified section
 	 */
-	public ElfRelocationTable getRelocationTable(ElfSectionHeader relocSection) {
+	public ElfRelocationTable getRelocationTable(ElfSection relocSection) {
 		return getRelocationTableAtOffset(relocSection.getFileOffset());
 	}
 
@@ -1620,9 +1620,9 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 		raf.write(dc.getBytes((short) e_phnum));
 		raf.write(dc.getBytes(e_shentsize));
-		if (e_shnum >= Short.toUnsignedInt(ElfSectionHeaderConstants.SHN_LORESERVE)) {
+		if (e_shnum >= Short.toUnsignedInt(ElfSectionConstants.SHN_LORESERVE)) {
 			throw new IOException(
-				"Unsupported section header count serialization: " + e_shnum);
+				"Unsupported section count serialization: " + e_shnum);
 		}
 		raf.write(dc.getBytes((short) e_shnum));
 		raf.write(dc.getBytes((short) e_shstrndx));

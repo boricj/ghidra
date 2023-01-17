@@ -120,7 +120,7 @@ public class PIC30_ElfExtension extends ElfExtension {
 
 	@Override
 	public AddressSpace getPreferredSectionAddressSpace(ElfLoadHelper elfLoadHelper,
-			ElfSectionHeader elfSectionHeader) {
+			ElfSection elfSectionHeader) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
 		if (isDataLoad(elfSectionHeader)) {
 			return language.getDefaultDataSpace();
@@ -136,7 +136,7 @@ public class PIC30_ElfExtension extends ElfExtension {
 		return !elfProgramHeader.isExecute();
 	}
 
-	private boolean isDataLoad(ElfSectionHeader section) {
+	private boolean isDataLoad(ElfSection section) {
 		if (!section.isAlloc()) {
 			return isDebugSection(section);
 		}
@@ -144,20 +144,20 @@ public class PIC30_ElfExtension extends ElfExtension {
 	}
 	
 	private boolean isDataLoad(MemoryLoadable loadable) {
-		if (loadable instanceof ElfSectionHeader) {
-			return isDataLoad((ElfSectionHeader)loadable);
+		if (loadable instanceof ElfSection) {
+			return isDataLoad((ElfSection)loadable);
 		}
 		return isDataLoad((ElfSegment)loadable);
 	}
 	
-	private boolean isDebugSection(ElfSectionHeader section) {
+	private boolean isDebugSection(ElfSection section) {
 		String name = section.getNameAsString();
 		return name.startsWith(".debug_") || ".comment".equals(name);
 	}
 	
 	private boolean isDebugSection(MemoryLoadable loadable) {
-		if (loadable instanceof ElfSectionHeader) {
-			return isDebugSection((ElfSectionHeader)loadable);
+		if (loadable instanceof ElfSection) {
+			return isDebugSection((ElfSection)loadable);
 		}
 		return false;
 	}
@@ -175,7 +175,7 @@ public class PIC30_ElfExtension extends ElfExtension {
 	}
 
 	@Override
-	public long getAdjustedSize(ElfSectionHeader section) {
+	public long getAdjustedSize(ElfSection section) {
 		long rawSize = section.getFileSize();
 		return isDataLoad(section) ? getAdjustedDataLoadSize(rawSize) : rawSize;
 	}
@@ -188,8 +188,8 @@ public class PIC30_ElfExtension extends ElfExtension {
 			return dataInput;
 		}
 
-		if (loadable instanceof ElfSectionHeader) {
-			ElfSectionHeader section = (ElfSectionHeader) loadable;
+		if (loadable instanceof ElfSection) {
+			ElfSection section = (ElfSection) loadable;
 			if (!elfLoadHelper.getElfHeader().isRelocatable() && (section.getFlags() & SHF_PSV) != 0) {
 				// TODO: this is really mapped into ROM space where PT_LOAD was done to physical memory
 				// In the absence of suitable mapping, we will load into RAM space

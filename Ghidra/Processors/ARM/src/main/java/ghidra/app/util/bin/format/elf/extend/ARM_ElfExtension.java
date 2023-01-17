@@ -49,16 +49,16 @@ public class ARM_ElfExtension extends ElfExtension {
 		new ElfSegmentType(0x70000000, "PT_ARM_EXIDX", "Frame unwind information");
 
 	// Elf Section Header Extensions
-	public static final ElfSectionHeaderType SHT_ARM_EXIDX =
-		new ElfSectionHeaderType(0x70000001, "SHT_ARM_EXIDX", "Exception Index table");
-	public static final ElfSectionHeaderType SHT_ARM_PREEMPTMAP = new ElfSectionHeaderType(
+	public static final ElfSectionType SHT_ARM_EXIDX =
+		new ElfSectionType(0x70000001, "SHT_ARM_EXIDX", "Exception Index table");
+	public static final ElfSectionType SHT_ARM_PREEMPTMAP = new ElfSectionType(
 		0x70000002, "SHT_ARM_PREEMPTMAP", "BPABI DLL dynamic linking preemption map");
-	public static final ElfSectionHeaderType SHT_ARM_ATTRIBUTES = new ElfSectionHeaderType(
+	public static final ElfSectionType SHT_ARM_ATTRIBUTES = new ElfSectionType(
 		0x70000003, "SHT_ARM_ATTRIBUTES", "Object file compatibility attributes");
-	public static final ElfSectionHeaderType SHT_ARM_DEBUGOVERLAY =
-		new ElfSectionHeaderType(0x70000004, "SHT_ARM_DEBUGOVERLAY", "See DBGOVL for details");
-	public static final ElfSectionHeaderType SHT_ARM_OVERLAYSECTION =
-		new ElfSectionHeaderType(0x70000005, "SHT_ARM_OVERLAYSECTION",
+	public static final ElfSectionType SHT_ARM_DEBUGOVERLAY =
+		new ElfSectionType(0x70000004, "SHT_ARM_DEBUGOVERLAY", "See DBGOVL for details");
+	public static final ElfSectionType SHT_ARM_OVERLAYSECTION =
+		new ElfSectionType(0x70000005, "SHT_ARM_OVERLAYSECTION",
 			"See Debugging Overlaid Programs (DBGOVL) for details");
 
 	@Override
@@ -86,7 +86,7 @@ public class ARM_ElfExtension extends ElfExtension {
 		boolean enablePcBiasOption = false;
 
 		// Enable PC Bias use if Green Hills (GHS) detected
-		ElfSectionHeader section = elf.getSection(e -> e.getNameAsString().equals(".ghsinfo"));
+		ElfSection section = elf.getSection(e -> e.getNameAsString().equals(".ghsinfo"));
 		if (section != null) {
 			enablePcBiasOption = true;
 		}

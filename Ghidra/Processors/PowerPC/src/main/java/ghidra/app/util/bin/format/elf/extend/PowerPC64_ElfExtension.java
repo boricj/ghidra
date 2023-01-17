@@ -131,7 +131,7 @@ public class PowerPC64_ElfExtension extends ElfExtension {
 			}
 			else {
 				MemoryBlock gotBlock =
-					program.getMemory().getBlock(ElfSectionHeaderConstants.dot_got);
+					program.getMemory().getBlock(ElfSectionConstants.dot_got);
 				if (gotBlock != null) {
 					tocAddr = gotBlock.getStart().addNoWrap(0x8000);
 				}
@@ -237,7 +237,7 @@ public class PowerPC64_ElfExtension extends ElfExtension {
 			throws CancelledException {
 
 		ElfHeader elf = elfLoadHelper.getElfHeader();
-		ElfSectionHeader pltSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionHeaderConstants.dot_plt));
+		ElfSection pltSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionConstants.dot_plt));
 		if (pltSection == null) {
 			return;
 		}

@@ -112,7 +112,7 @@ public class ElfSymbol implements ByteArrayConverter {
 	 * Creates a new section symbol.
 	 * @param header the corresponding ELF header
 	 * @param sectionAddress the start address of the section
-	 * @param sectionHeaderIndex the index of the section in the section header table
+	 * @param sectionHeaderIndex the index of the section in the section table
 	 * @param name the string name of the section
 	 * @param symbolIndex index of symbol within corresponding symbol table
 	 * @param symbolTable symbol table
@@ -201,12 +201,12 @@ public class ElfSymbol implements ByteArrayConverter {
 
 		if (st_name == 0) {
 			if (getType() == STT_SECTION) {
-				List<ElfSectionHeader> sections = header.getSections();
+				List<ElfSection> sections = header.getSections();
 				// FIXME: handle extended section indexing
 				int uSectionIndex = Short.toUnsignedInt(st_shndx);
-				if (Short.compareUnsigned(st_shndx, ElfSectionHeaderConstants.SHN_LORESERVE) < 0 &&
+				if (Short.compareUnsigned(st_shndx, ElfSectionConstants.SHN_LORESERVE) < 0 &&
 					uSectionIndex < sections.size()) {
-					ElfSectionHeader section = sections.get(uSectionIndex);
+					ElfSection section = sections.get(uSectionIndex);
 					nameAsString = section.getNameAsString();
 				}
 			}
@@ -354,7 +354,7 @@ public class ElfSymbol implements ByteArrayConverter {
 	public boolean isExternal() {
 		return (isGlobal() || isWeak()) && getValue() == 0 && getSize() == 0 &&
 			getType() == STT_NOTYPE &&
-			getSectionHeaderIndex() == ElfSectionHeaderConstants.SHN_UNDEF;
+			getSectionIndex() == ElfSectionConstants.SHN_UNDEF;
 	}
 
 	/**
@@ -403,7 +403,7 @@ public class ElfSymbol implements ByteArrayConverter {
 	 * @return true if the symbol value will not change due to relocation
 	 */
 	public boolean isAbsolute() {
-		return st_shndx == ElfSectionHeaderConstants.SHN_ABS;
+		return st_shndx == ElfSectionConstants.SHN_ABS;
 	}
 
 	/**
@@ -414,7 +414,7 @@ public class ElfSymbol implements ByteArrayConverter {
 	 * @return true if this is a common symbol
 	 */
 	public boolean isCommon() {
-		return st_shndx == ElfSectionHeaderConstants.SHN_COMMON;
+		return st_shndx == ElfSectionConstants.SHN_COMMON;
 	}
 
 	/**
@@ -494,20 +494,20 @@ public class ElfSymbol implements ByteArrayConverter {
 	 * Get the raw section index value (<code>st_shndx</code>) for this symbol.
 	 * Special values (SHN_LORESERVE and higher) must be treated properly.  The value SHN_XINDEX 
 	 * indicates that the extended value must be used to obtained the actual section index 
-	 * (see {@link #getExtendedSectionHeaderIndex()}).
+	 * (see {@link #getExtendedSectionIndex()}).
 	 * @return the <code>st_shndx</code> section index value
 	 */
-	public short getSectionHeaderIndex() {
+	public short getSectionIndex() {
 		return st_shndx;
 	}
 
 	/**
 	 * Get the extended symbol section index value when <code>st_shndx</code>
-	 * ({@link #getSectionHeaderIndex()}) has a value of SHN_XINDEX.  This requires a lookup
+	 * ({@link #getSectionIndex()}) has a value of SHN_XINDEX.  This requires a lookup
 	 * into a table defined by an associated SHT_SYMTAB_SHNDX section.
 	 * @return extended symbol section index value
 	 */
-	public int getExtendedSectionHeaderIndex() {
+	public int getExtendedSectionIndex() {
 		return symbolTable != null ? symbolTable.getExtendedSectionIndex(this) : 0;
 	}
 
@@ -517,8 +517,8 @@ public class ElfSymbol implements ByteArrayConverter {
 	 * specific value in the range SHN_LOPROC..SHN_HIPROC, else false
 	 */
 	public boolean hasProcessorSpecificSymbolSectionIndex() {
-		return (Short.compareUnsigned(st_shndx, ElfSectionHeaderConstants.SHN_LOPROC) >= 0) &&
-			(Short.compareUnsigned(st_shndx, ElfSectionHeaderConstants.SHN_HIPROC) <= 0);
+		return (Short.compareUnsigned(st_shndx, ElfSectionConstants.SHN_LOPROC) >= 0) &&
+			(Short.compareUnsigned(st_shndx, ElfSectionConstants.SHN_HIPROC) <= 0);
 	}
 
 	/**

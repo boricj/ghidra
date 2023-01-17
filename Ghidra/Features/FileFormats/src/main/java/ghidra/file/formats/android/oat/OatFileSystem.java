@@ -98,7 +98,7 @@ public class OatFileSystem extends GFileSystemBase {
 			ElfHeader elf = new ElfHeader(provider, null);
 			monitor.incrementProgress(1);
 
-			ElfSectionHeader roDataSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionHeaderConstants.dot_rodata));
+			ElfSection roDataSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionConstants.dot_rodata));
 			if (roDataSection == null) {
 				throw new IOException("rodata section does not exist.");
 			}

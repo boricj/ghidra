@@ -28,8 +28,8 @@ public class AARCH64_ElfExtension extends ElfExtension {
 		new ElfSegmentType(0x70000000, "PT_AARCH64_ARCHEXT", "AARCH64 extension");
 
 	// Elf Section Header Extensions
-	public static final ElfSectionHeaderType SHT_AARCH64_ATTRIBUTES =
-		new ElfSectionHeaderType(0x70000003, "SHT_AARCH64_ATTRIBUTES", "Attribute section");
+	public static final ElfSectionType SHT_AARCH64_ATTRIBUTES =
+		new ElfSectionType(0x70000003, "SHT_AARCH64_ATTRIBUTES", "Attribute section");
 
 	// Section header flags
 	private static final int SHF_ENTRYSECT = 0x10000000; // section contains entry point

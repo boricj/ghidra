@@ -18,7 +18,7 @@ package ghidra.file.formats.android.oat;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.StructConverter;
-import ghidra.app.util.bin.format.elf.ElfSectionHeaderConstants;
+import ghidra.app.util.bin.format.elf.ElfSectionConstants;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.file.analyzers.FileFormatAnalyzer;
 import ghidra.file.formats.android.dex.format.DexHeader;
@@ -225,7 +225,7 @@ public class OatHeaderAnalyzer extends FileFormatAnalyzer {
 			MemoryBlock oatPatchesBlock) {
 		int pos = oatPatchesBlock.getName().indexOf(OatConstants.DOT_OAT_PATCHES_SECTION_NAME);
 		if (pos == 0) {//the block's full name is ".oat_patches"
-			return program.getMemory().getBlock(ElfSectionHeaderConstants.dot_text);
+			return program.getMemory().getBlock(ElfSectionConstants.dot_text);
 		}
 		//the block has a prefix, that is the destination name
 		String destinationBlockName = oatPatchesBlock.getName().substring(0, pos);

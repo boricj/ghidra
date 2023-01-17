@@ -139,8 +139,8 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 		Memory memory = currentProgram.getMemory();
 
-		List<ElfSectionHeader> stringSections = elf.getSections(e -> e.getType() == ElfSectionHeaderConstants.SHT_STRTAB);
-		for (ElfSectionHeader stringSection : stringSections) {
+		List<ElfSection> stringSections = elf.getSections(e -> e.getType() == ElfSectionConstants.SHT_STRTAB);
+		for (ElfSection stringSection : stringSections) {
 			monitor.checkCanceled();
 			try {
 				Address addr = addr(stringSection.getFileOffset());
@@ -174,9 +174,9 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 	}
 
 	private void processSectionHeaders(ElfHeader elf, Listing listing) throws Exception {
-		List<ElfSectionHeader> sections = elf.getSections();
+		List<ElfSection> sections = elf.getSections();
 		for (int i = 0; i < sections.size(); i++) {
-			ElfSectionHeader section = sections.get(i);
+			ElfSection section = sections.get(i);
 			monitor.checkCanceled();
 			String name = section.getNameAsString();
 
@@ -191,7 +191,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 			cu.setComment(CodeUnit.PLATE_COMMENT,
 				"#" + i + ") " + name + " at 0x" + Long.toHexString(section.getVirtualAddress()));
 
-			if (section.getType() == ElfSectionHeaderConstants.SHT_NOBITS ||
+			if (section.getType() == ElfSectionConstants.SHT_NOBITS ||
 				section.getMemorySize() == 0 || section.isInvalidOffset()) {
 				continue;
 			}
@@ -411,8 +411,8 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 			monitor.checkCanceled();
 			ElfFileSection relocationSection = relocationTable.getFileSection();
 			String relocSectionName = "<section-not-found>";
-			if (relocationSection instanceof ElfSectionHeader) {
-				relocSectionName = ((ElfSectionHeader) relocationSection).getNameAsString();
+			if (relocationSection instanceof ElfSection) {
+				relocSectionName = ((ElfSection) relocationSection).getNameAsString();
 			}
 
 			//		elf.getSection(relocationTable.getFileOffset()); // may be null

@@ -306,7 +306,7 @@ public class AVR32_ElfRelocationHandler extends ElfRelocationHandler {
 				    break;
 				    
 				case AVR32_ElfRelocationConstants.R_AVR32_GOTPC:
-				    ElfSectionHeader dotgot = elf.getGOT();
+				    ElfSection dotgot = elf.getGOT();
 				    MemoryBlock got = memory.getBlock(dotgot.getNameAsString());
 				    newValue = ((symbolValue + (int)addend - (int)got.getStart().getOffset()) & 0xffffffff);
 				    memory.setInt(relocationAddress, newValue);

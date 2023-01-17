@@ -28,8 +28,8 @@ public class HCS12X_ElfExtension extends ElfExtension {
 		new ElfSegmentType(0x70000000, "PT_HCS12X_ARCHEXT", "HCS12X extension");
 
 	// Elf Section Header Extensions
-	public static final ElfSectionHeaderType SHT_HCS12_ATTRIBUTES =
-		new ElfSectionHeaderType(0x70000003, "SHT_AHCS12_ATTRIBUTES", "Attribute section");
+	public static final ElfSectionType SHT_HCS12_ATTRIBUTES =
+		new ElfSectionType(0x70000003, "SHT_AHCS12_ATTRIBUTES", "Attribute section");
 
 	@Override
 	public boolean canHandle(ElfHeader elf) {
@@ -77,7 +77,7 @@ public class HCS12X_ElfExtension extends ElfExtension {
 
 	@Override
 	public Address getPreferredSectionAddress(ElfLoadHelper elfLoadHelper,
-			ElfSectionHeader elfSectionHeader) {
+			ElfSection elfSectionHeader) {
 
 		Program program = elfLoadHelper.getProgram();
 

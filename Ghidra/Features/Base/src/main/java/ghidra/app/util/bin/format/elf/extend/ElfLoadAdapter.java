@@ -96,26 +96,26 @@ public class ElfLoadAdapter {
 
 	/**
 	 * Add all extension specific Section Header types (e.g., SHT_ prefix).
-	 * This method will add all those statically defined ElfSectionHeaderType fields
+	 * This method will add all those statically defined ElfSectionType fields
 	 * within this class.
-	 * @param sectionHeaderTypeMap map to which ElfSectionHeaderType definitions should be added
+	 * @param sectionHeaderTypeMap map to which ElfSectionType definitions should be added
 	 */
-	public final void addSectionHeaderTypes(
-			HashMap<Integer, ElfSectionHeaderType> sectionHeaderTypeMap) {
+	public final void addSectionTypes(
+			HashMap<Integer, ElfSectionType> sectionHeaderTypeMap) {
 
 		for (Field field : getClass().getDeclaredFields()) {
 			String name = null;
 			try {
 				if (Modifier.isStatic(field.getModifiers()) &&
-					field.getType().equals(ElfSectionHeaderType.class)) {
-					ElfSectionHeaderType type = (ElfSectionHeaderType) field.get(this);
+					field.getType().equals(ElfSectionType.class)) {
+					ElfSectionType type = (ElfSectionType) field.get(this);
 					name = type.name;
-					ElfSectionHeaderType.addSectionHeaderType(type, sectionHeaderTypeMap);
+					ElfSectionType.addSectionType(type, sectionHeaderTypeMap);
 				}
 			}
 			catch (DuplicateNameException e) {
 				Msg.error(this,
-					"Invalid ElfSectionHeaderType(" + name + ") defined by " + getClass().getName(),
+					"Invalid ElfSectionType(" + name + ") defined by " + getClass().getName(),
 					e);
 			}
 			catch (IllegalArgumentException | IllegalAccessException e) {
@@ -189,13 +189,13 @@ public class ElfLoadAdapter {
 	 * This method may only return a physical address space and not an overlay 
 	 * address space.
 	 * @param elfLoadHelper load helper object
-	 * @param elfSectionHeader elf section header
+	 * @param elfSection elf section
 	 * @return preferred load address space
 	 */
 	public AddressSpace getPreferredSectionAddressSpace(ElfLoadHelper elfLoadHelper,
-			ElfSectionHeader elfSectionHeader) {
+			ElfSection elfSection) {
 		Program program = elfLoadHelper.getProgram();
-		if (elfSectionHeader.isExecutable()) {
+		if (elfSection.isExecutable()) {
 			return program.getAddressFactory().getDefaultAddressSpace();
 		}
 		// segment is not marked execute, use the data space by default
@@ -207,16 +207,16 @@ public class ElfLoadAdapter {
 	 * This method may only return a physical address and not an overlay 
 	 * address.
 	 * @param elfLoadHelper load helper object
-	 * @param elfSectionHeader elf program section header
+	 * @param elfSection elf program section
 	 * @return preferred load address
 	 */
 	public Address getPreferredSectionAddress(ElfLoadHelper elfLoadHelper,
-			ElfSectionHeader elfSectionHeader) {
+			ElfSection elfSection) {
 		Program program = elfLoadHelper.getProgram();
 
-		AddressSpace space = getPreferredSectionAddressSpace(elfLoadHelper, elfSectionHeader);
+		AddressSpace space = getPreferredSectionAddressSpace(elfLoadHelper, elfSection);
 
-		long addrWordOffset = elfSectionHeader.getVirtualAddress();
+		long addrWordOffset = elfSection.getVirtualAddress();
 
 		if (space == program.getAddressFactory().getDefaultAddressSpace()) {
 			addrWordOffset += elfLoadHelper.getImageBaseWordAdjustmentOffset();
@@ -279,9 +279,9 @@ public class ElfLoadAdapter {
 	 * Perform extension specific processing of Elf image during program load.
 	 * The following loading steps will have already been completed:
 	 * <pre>
-	 * 1. default processing of all segments and section headers
-	 * 2. memory resolution and loading of all segments and section headers
-	 * 3. Markup completed of Elf header, segments, section headers, dynamic table,
+	 * 1. default processing of all segments and sections
+	 * 2. memory resolution and loading of all segments and sections
+	 * 3. Markup completed of Elf header, segments, sections, dynamic table,
 	 *    string tables, and symbol tables.
 	 * </pre>
 	 * Markup and application of relocation tables will NOT have been done yet. 
@@ -385,32 +385,32 @@ public class ElfLoadAdapter {
 
 	/**
 	 * Get the write permission for the specified section.
-	 * @param section section header object
+	 * @param section section object
 	 * @return true if write enabled, else false or null to use standard Elf section
 	 * flags to make the determination.
 	 */
-	public Boolean isSectionWritable(ElfSectionHeader section) {
-		return (section.getFlags() & ElfSectionHeaderConstants.SHF_WRITE) != 0;
+	public Boolean isSectionWritable(ElfSection section) {
+		return (section.getFlags() & ElfSectionConstants.SHF_WRITE) != 0;
 	}
 
 	/**
 	 * Get the execute permission for the specified section (i.e., instructions permitted).
-	 * @param section section header object
+	 * @param section section object
 	 * @return true if execute enabled, else false or null to use standard Elf section
 	 * flags to make the determination.
 	 */
-	public Boolean isSectionExecutable(ElfSectionHeader section) {
-		return (section.getFlags() & ElfSectionHeaderConstants.SHF_EXECINSTR) != 0;
+	public Boolean isSectionExecutable(ElfSection section) {
+		return (section.getFlags() & ElfSectionConstants.SHF_EXECINSTR) != 0;
 	}
 
 	/**
 	 * Determine if the specified section is "allocated" within memory.
-	 * @param section section header object
+	 * @param section section object
 	 * @return true if section should be allocated, else false or null to use standard Elf section
 	 * flags to make the determination.
 	 */
-	public Boolean isSectionAllocated(ElfSectionHeader section) {
-		return (section.getFlags() & ElfSectionHeaderConstants.SHF_ALLOC) != 0;
+	public Boolean isSectionAllocated(ElfSection section) {
+		return (section.getFlags() & ElfSectionConstants.SHF_ALLOC) != 0;
 	}
 
 	/**
@@ -463,12 +463,12 @@ public class ElfLoadAdapter {
 	}
 
 	/**
-	 * Return the memory section size in bytes for the specified section header.
+	 * Return the memory section size in bytes for the specified section.
 	 * The returned value will be consistent with any byte filtering which may be required.
-	 * @param section the section header
-	 * @return preferred memory block size in bytes which corresponds to the specified section header
+	 * @param section the section
+	 * @return preferred memory block size in bytes which corresponds to the specified section
 	 */
-	public long getAdjustedSize(ElfSectionHeader section) {
+	public long getAdjustedSize(ElfSection section) {
 		return section.getFileSize();
 	}
 
@@ -477,7 +477,7 @@ public class ElfLoadAdapter {
 	 * NOTE: If this method is overriden, the {@link #hasFilteredLoadInputStream(ElfLoadHelper, MemoryLoadable, Address)}
 	 * must also be overriden in a consistent fashion.
 	 * @param elfLoadHelper
-	 * @param loadable Corresponding ElfSectionHeader or ElfSegment for the memory block to be created.
+	 * @param loadable Corresponding ElfSection or ElfSegment for the memory block to be created.
 	 * @param start memory load address
 	 * @param dataLength the in-memory data length in bytes (actual bytes read from dataInput may be more)
 	 * @param dataInput the source input stream
@@ -493,7 +493,7 @@ public class ElfLoadAdapter {
 	 * is required when loading a memory block.  If a filtered input stream is required this will prevent the use of a direct 
 	 * mapping to file bytes.
 	 * @param elfLoadHelper 
-	 * @param loadable Corresponding ElfSectionHeader or ElfSegment for the memory block to be loaded.
+	 * @param loadable Corresponding ElfSection or ElfSegment for the memory block to be loaded.
 	 * @param start memory load address
 	 * @return true if the use of a filtered input stream is required
 	 */

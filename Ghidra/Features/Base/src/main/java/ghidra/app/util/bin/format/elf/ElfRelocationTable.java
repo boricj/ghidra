@@ -39,7 +39,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 
 	private TableFormat format;
 
-	private ElfSectionHeader sectionToBeRelocated;
+	private ElfSection sectionToBeRelocated;
 
 	private ElfSymbolTable symbolTable;
 
@@ -54,7 +54,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 	/**
 	 * Construct an Elf Relocation Table
 	 * @param header elf header
-	 * @param fileSection relocation table section header or null if associated with a dynamic table entry
+	 * @param fileSection relocation table section or null if associated with a dynamic table entry
 	 * @param addendTypeReloc true if addend type relocation table
 	 * @param symbolTable associated symbol table (may be null if not applicable)
 	 * @param sectionToBeRelocated or null for dynamic relocation table
@@ -63,7 +63,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 	 */
 	public ElfRelocationTable(ElfHeader header, ElfFileSection fileSection,
 			boolean addendTypeReloc, ElfSymbolTable symbolTable,
-			ElfSectionHeader sectionToBeRelocated, TableFormat format) throws IOException {
+			ElfSection sectionToBeRelocated, TableFormat format) throws IOException {
 
 		this.fileSection = fileSection;
 		this.addendTypeReloc = addendTypeReloc;
@@ -100,7 +100,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 			// have a symbol table.  All other section-based relocation tables require a symbol
 			// table if link != 0.  NOTE: There is the possibility that a symbol table is required
 			// when link==0 which may result in relocation processing errors if it is missing.
-			return !(fileSection instanceof ElfSectionHeader) || ((ElfSectionHeader) fileSection).getLink() != 0;
+			return !(fileSection instanceof ElfSection) || ((ElfSection) fileSection).getLink() != 0;
 		}
 		return false;
 	}
@@ -268,7 +268,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 	 * or null for dynamic relocation table not associated with 
 	 * a section.
 	 */
-	public ElfSectionHeader getSectionToBeRelocated() {
+	public ElfSection getSectionToBeRelocated() {
 		return sectionToBeRelocated;
 	}
 

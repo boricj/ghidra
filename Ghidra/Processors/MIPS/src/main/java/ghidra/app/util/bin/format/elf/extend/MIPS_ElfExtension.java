@@ -56,93 +56,93 @@ public class MIPS_ElfExtension extends ElfExtension {
 		new ElfSegmentType(0x70000003, "PT_MIPS_ABIFLAGS", "Records ABI related flags");
 
 	// Elf Section Header Extensions
-	public static final ElfSectionHeaderType SHT_MIPS_LIBLIST =
-		new ElfSectionHeaderType(0x70000000, "SHT_MIPS_LIBLIST",
+	public static final ElfSectionType SHT_MIPS_LIBLIST =
+		new ElfSectionType(0x70000000, "SHT_MIPS_LIBLIST",
 			"Section contains the set of dynamic shared objects used when statically linking");
-	public static final ElfSectionHeaderType SHT_MIPS_MSYM =
-		new ElfSectionHeaderType(0x70000001, "SHT_MIPS_MSYM", "");
-	public static final ElfSectionHeaderType SHT_MIPS_CONFLICT = new ElfSectionHeaderType(
+	public static final ElfSectionType SHT_MIPS_MSYM =
+		new ElfSectionType(0x70000001, "SHT_MIPS_MSYM", "");
+	public static final ElfSectionType SHT_MIPS_CONFLICT = new ElfSectionType(
 		0x70000002, "SHT_MIPS_CONFLICT",
 		"Section contains list of symbols whose definitions conflict with symbols defined in shared objects");
-	public static final ElfSectionHeaderType SHT_MIPS_GPTAB = new ElfSectionHeaderType(0x70000003,
+	public static final ElfSectionType SHT_MIPS_GPTAB = new ElfSectionType(0x70000003,
 		"SHT_MIPS_GPTAB", "Section contains the global pointer table");
-	public static final ElfSectionHeaderType SHT_MIPS_UCODE = new ElfSectionHeaderType(0x70000004,
+	public static final ElfSectionType SHT_MIPS_UCODE = new ElfSectionType(0x70000004,
 		"SHT_MIPS_UCODE", "Section contains microcode information");
-	public static final ElfSectionHeaderType SHT_MIPS_DEBUG = new ElfSectionHeaderType(0x70000005,
+	public static final ElfSectionType SHT_MIPS_DEBUG = new ElfSectionType(0x70000005,
 		"SHT_MIPS_DEBUG", "Section contains some sort of debugging information");
-	public static final ElfSectionHeaderType SHT_MIPS_REGINFO = new ElfSectionHeaderType(0x70000006,
+	public static final ElfSectionType SHT_MIPS_REGINFO = new ElfSectionType(0x70000006,
 		"SHT_MIPS_REGINFO", "Section contains register usage information");
-	public static final ElfSectionHeaderType SHT_MIPS_PACKAGE =
-		new ElfSectionHeaderType(0x70000007, "SHT_MIPS_PACKAGE", "");
-	public static final ElfSectionHeaderType SHT_MIPS_PACKSYM =
-		new ElfSectionHeaderType(0x70000008, "SHT_MIPS_PACKSYM", "");
-	public static final ElfSectionHeaderType SHT_MIPS_RELD =
-		new ElfSectionHeaderType(0x70000009, "SHT_MIPS_RELD", "");
+	public static final ElfSectionType SHT_MIPS_PACKAGE =
+		new ElfSectionType(0x70000007, "SHT_MIPS_PACKAGE", "");
+	public static final ElfSectionType SHT_MIPS_PACKSYM =
+		new ElfSectionType(0x70000008, "SHT_MIPS_PACKSYM", "");
+	public static final ElfSectionType SHT_MIPS_RELD =
+		new ElfSectionType(0x70000009, "SHT_MIPS_RELD", "");
 
-	public static final ElfSectionHeaderType SHT_MIPS_IFACE =
-		new ElfSectionHeaderType(0x7000000b, "", "Section contains interface information");
-	public static final ElfSectionHeaderType SHT_MIPS_CONTENT = new ElfSectionHeaderType(0x7000000c,
+	public static final ElfSectionType SHT_MIPS_IFACE =
+		new ElfSectionType(0x7000000b, "", "Section contains interface information");
+	public static final ElfSectionType SHT_MIPS_CONTENT = new ElfSectionType(0x7000000c,
 		"SHT_MIPS_CONTENT", "Section contains description of contents of another section");
-	public static final ElfSectionHeaderType SHT_MIPS_OPTIONS = new ElfSectionHeaderType(0x7000000d,
+	public static final ElfSectionType SHT_MIPS_OPTIONS = new ElfSectionType(0x7000000d,
 		"SHT_MIPS_OPTIONS", "Section contains miscellaneous options");
 
-	public static final ElfSectionHeaderType SHT_MIPS_SHDR =
-		new ElfSectionHeaderType(0x70000010, "SHT_MIPS_SHDR", "");
-	public static final ElfSectionHeaderType SHT_MIPS_FDESC =
-		new ElfSectionHeaderType(0x70000011, "SHT_MIPS_FDESC", "");
-	public static final ElfSectionHeaderType SHT_MIPS_EXTSYM =
-		new ElfSectionHeaderType(0x70000012, "SHT_MIPS_EXTSYM", "");
-	public static final ElfSectionHeaderType SHT_MIPS_DENSE =
-		new ElfSectionHeaderType(0x70000013, "SHT_MIPS_DENSE", "");
-	public static final ElfSectionHeaderType SHT_MIPS_PDESC =
-		new ElfSectionHeaderType(0x70000014, "SHT_MIPS_PDESC", "");
-	public static final ElfSectionHeaderType SHT_MIPS_LOCSYM =
-		new ElfSectionHeaderType(0x70000015, "SHT_MIPS_LOCSYM", "");
-	public static final ElfSectionHeaderType SHT_MIPS_AUXSYM =
-		new ElfSectionHeaderType(0x70000016, "SHT_MIPS_AUXSYM", "");
-	public static final ElfSectionHeaderType SHT_MIPS_OPTSYM =
-		new ElfSectionHeaderType(0x70000017, "SHT_MIPS_OPTSYM", "");
-	public static final ElfSectionHeaderType SHT_MIPS_LOCSTR =
-		new ElfSectionHeaderType(0x70000018, "SHT_MIPS_LOCSTR", "");
-	public static final ElfSectionHeaderType SHT_MIPS_LINE =
-		new ElfSectionHeaderType(0x70000019, "SHT_MIPS_LINE", "");
-	public static final ElfSectionHeaderType SHT_MIPS_RFDESC =
-		new ElfSectionHeaderType(0x7000001a, "SHT_MIPS_RFDESC", "");
-	public static final ElfSectionHeaderType SHT_MIPS_DELTASYM =
-		new ElfSectionHeaderType(0x7000001b, "SHT_MIPS_DELTASYM", "Delta C++: symbol table");
-	public static final ElfSectionHeaderType SHT_MIPS_DELTAINST =
-		new ElfSectionHeaderType(0x7000001c, "SHT_MIPS_DELTAINST", "Delta C++: instance table");
-	public static final ElfSectionHeaderType SHT_MIPS_DELTACLASS =
-		new ElfSectionHeaderType(0x7000001d, "SHT_MIPS_DELTACLASS", "Delta C++: class table");
-	public static final ElfSectionHeaderType SHT_MIPS_DWARF =
-		new ElfSectionHeaderType(0x7000001e, "SHT_MIPS_DWARF", "DWARF debugging section");
-	public static final ElfSectionHeaderType SHT_MIPS_DELTADECL =
-		new ElfSectionHeaderType(0x7000001f, "SHT_MIPS_DELTADECL", "Delta C++: declarations");
-	public static final ElfSectionHeaderType SHT_MIPS_SYMBOL_LIB =
-		new ElfSectionHeaderType(0x70000020, "SHT_MIPS_SYMBOL_LIB",
+	public static final ElfSectionType SHT_MIPS_SHDR =
+		new ElfSectionType(0x70000010, "SHT_MIPS_SHDR", "");
+	public static final ElfSectionType SHT_MIPS_FDESC =
+		new ElfSectionType(0x70000011, "SHT_MIPS_FDESC", "");
+	public static final ElfSectionType SHT_MIPS_EXTSYM =
+		new ElfSectionType(0x70000012, "SHT_MIPS_EXTSYM", "");
+	public static final ElfSectionType SHT_MIPS_DENSE =
+		new ElfSectionType(0x70000013, "SHT_MIPS_DENSE", "");
+	public static final ElfSectionType SHT_MIPS_PDESC =
+		new ElfSectionType(0x70000014, "SHT_MIPS_PDESC", "");
+	public static final ElfSectionType SHT_MIPS_LOCSYM =
+		new ElfSectionType(0x70000015, "SHT_MIPS_LOCSYM", "");
+	public static final ElfSectionType SHT_MIPS_AUXSYM =
+		new ElfSectionType(0x70000016, "SHT_MIPS_AUXSYM", "");
+	public static final ElfSectionType SHT_MIPS_OPTSYM =
+		new ElfSectionType(0x70000017, "SHT_MIPS_OPTSYM", "");
+	public static final ElfSectionType SHT_MIPS_LOCSTR =
+		new ElfSectionType(0x70000018, "SHT_MIPS_LOCSTR", "");
+	public static final ElfSectionType SHT_MIPS_LINE =
+		new ElfSectionType(0x70000019, "SHT_MIPS_LINE", "");
+	public static final ElfSectionType SHT_MIPS_RFDESC =
+		new ElfSectionType(0x7000001a, "SHT_MIPS_RFDESC", "");
+	public static final ElfSectionType SHT_MIPS_DELTASYM =
+		new ElfSectionType(0x7000001b, "SHT_MIPS_DELTASYM", "Delta C++: symbol table");
+	public static final ElfSectionType SHT_MIPS_DELTAINST =
+		new ElfSectionType(0x7000001c, "SHT_MIPS_DELTAINST", "Delta C++: instance table");
+	public static final ElfSectionType SHT_MIPS_DELTACLASS =
+		new ElfSectionType(0x7000001d, "SHT_MIPS_DELTACLASS", "Delta C++: class table");
+	public static final ElfSectionType SHT_MIPS_DWARF =
+		new ElfSectionType(0x7000001e, "SHT_MIPS_DWARF", "DWARF debugging section");
+	public static final ElfSectionType SHT_MIPS_DELTADECL =
+		new ElfSectionType(0x7000001f, "SHT_MIPS_DELTADECL", "Delta C++: declarations");
+	public static final ElfSectionType SHT_MIPS_SYMBOL_LIB =
+		new ElfSectionType(0x70000020, "SHT_MIPS_SYMBOL_LIB",
 			"List of libraries the binary depends on.  Includes a time stamp, version number");
-	public static final ElfSectionHeaderType SHT_MIPS_EVENTS =
-		new ElfSectionHeaderType(0x70000021, "SHT_MIPS_EVENTS", "Events section");
-	public static final ElfSectionHeaderType SHT_MIPS_TRANSLATE =
-		new ElfSectionHeaderType(0x70000022, "SHT_MIPS_TRANSLATE", "");
-	public static final ElfSectionHeaderType SHT_MIPS_PIXIE =
-		new ElfSectionHeaderType(0x70000023, "SHT_MIPS_PIXIE", "Special pixie sections");
-	public static final ElfSectionHeaderType SHT_MIPS_XLATE = new ElfSectionHeaderType(0x70000024,
+	public static final ElfSectionType SHT_MIPS_EVENTS =
+		new ElfSectionType(0x70000021, "SHT_MIPS_EVENTS", "Events section");
+	public static final ElfSectionType SHT_MIPS_TRANSLATE =
+		new ElfSectionType(0x70000022, "SHT_MIPS_TRANSLATE", "");
+	public static final ElfSectionType SHT_MIPS_PIXIE =
+		new ElfSectionType(0x70000023, "SHT_MIPS_PIXIE", "Special pixie sections");
+	public static final ElfSectionType SHT_MIPS_XLATE = new ElfSectionType(0x70000024,
 		"SHT_MIPS_XLATE", "Address translation table (for debug info)");
-	public static final ElfSectionHeaderType SHT_MIPS_XLATE_DEBUG =
-		new ElfSectionHeaderType(0x70000025, "SHT_MIPS_XLATE_DEBUG",
+	public static final ElfSectionType SHT_MIPS_XLATE_DEBUG =
+		new ElfSectionType(0x70000025, "SHT_MIPS_XLATE_DEBUG",
 			"SGI internal address translation table (for debug info)");
-	public static final ElfSectionHeaderType SHT_MIPS_WHIRL =
-		new ElfSectionHeaderType(0x70000026, "SHT_MIPS_WHIRL", "Intermediate code");
-	public static final ElfSectionHeaderType SHT_MIPS_EH_REGION = new ElfSectionHeaderType(
+	public static final ElfSectionType SHT_MIPS_WHIRL =
+		new ElfSectionType(0x70000026, "SHT_MIPS_WHIRL", "Intermediate code");
+	public static final ElfSectionType SHT_MIPS_EH_REGION = new ElfSectionType(
 		0x70000027, "SHT_MIPS_EH_REGION", "C++ exception handling region info");
-	public static final ElfSectionHeaderType SHT_MIPS_XLATE_OLD = new ElfSectionHeaderType(
+	public static final ElfSectionType SHT_MIPS_XLATE_OLD = new ElfSectionType(
 		0x70000028, "SHT_MIPS_XLATE_OLD", "Obsolete address translation table (for debug info)");
-	public static final ElfSectionHeaderType SHT_MIPS_PDR_EXCEPTION =
-		new ElfSectionHeaderType(0x70000029, "SHT_MIPS_PDR_EXCEPTION",
+	public static final ElfSectionType SHT_MIPS_PDR_EXCEPTION =
+		new ElfSectionType(0x70000029, "SHT_MIPS_PDR_EXCEPTION",
 			"Runtime procedure descriptor table exception information");
-	public static final ElfSectionHeaderType SHT_MIPS_ABIFLAGS =
-		new ElfSectionHeaderType(0x7000002a, "SHT_MIPS_ABIFLAGS", "ABI related flags section");
+	public static final ElfSectionType SHT_MIPS_ABIFLAGS =
+		new ElfSectionType(0x7000002a, "SHT_MIPS_ABIFLAGS", "ABI related flags section");
 
 	// Elf Dynamic Type Extensions
 	public static final ElfDynamicType DT_MIPS_RLD_VERSION =
@@ -342,7 +342,7 @@ public class MIPS_ElfExtension extends ElfExtension {
 			return null;
 		}
 
-		short sectionIndex = elfSymbol.getSectionHeaderIndex();
+		short sectionIndex = elfSymbol.getSectionIndex();
 		if (sectionIndex == SHN_MIPS_ACOMMON || sectionIndex == SHN_MIPS_TEXT || sectionIndex == SHN_MIPS_DATA) {
 			// NOTE: logic assumes no memory conflict occured during section loading
 			AddressSpace defaultSpace = elfLoadHelper.getProgram().getAddressFactory().getDefaultAddressSpace();
@@ -511,7 +511,7 @@ public class MIPS_ElfExtension extends ElfExtension {
 			}
 		}
 
-		for (ElfSectionHeader sectionHeader : elf.getSections()) {
+		for (ElfSection sectionHeader : elf.getSections()) {
 			int headertype = sectionHeader.getType();
 			if (headertype == SHT_MIPS_OPTIONS.value) {
 				mipsOptionsAddr = elfLoadHelper.findLoadAddress(sectionHeader, 0);
@@ -788,7 +788,7 @@ public class MIPS_ElfExtension extends ElfExtension {
 					imageShift, elfLoadHelper);
 				Data pointerData = elfLoadHelper.createData(gotEntryAddr, PointerDataType.dataType);
 				ElfDefaultGotPltMarkup.setConstant(pointerData);
-				if (elfSymbols[i].isFunction() && elfSymbols[i].getSectionHeaderIndex() == 0) {
+				if (elfSymbols[i].isFunction() && elfSymbols[i].getSectionIndex() == 0) {
 					// ensure that external function/thunk are created in absence of sections
 					String symName = elfSymbols[i].getNameAsString();
 					if (!StringUtils.isBlank(symName)) {
@@ -843,7 +843,7 @@ public class MIPS_ElfExtension extends ElfExtension {
 			for (int i = 0; i < gotSymbolIndex; i++) {
 				monitor.checkCanceled();
 				if (!elfSymbols[i].isFunction() || !elfSymbols[i].isGlobal() ||
-					elfSymbols[i].getSectionHeaderIndex() != 0) {
+					elfSymbols[i].getSectionIndex() != 0) {
 					continue;
 				}
 				Address gotEntryAddr = adjustTableEntryIfNonZero(mipsPltgotBase, ++gotEntryIndex,

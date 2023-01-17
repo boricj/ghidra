@@ -61,7 +61,7 @@ public class ElfDefaultGotPltMarkup {
 	}
 
 	public void process(TaskMonitor monitor) throws CancelledException {
-		if (elf.getSectionHeaderCount() == 0) {
+		if (elf.getSectionCount() == 0) {
 			processDynamicPLTGOT(ElfDynamicType.DT_PLTGOT, ElfDynamicType.DT_JMPREL, monitor);
 		}
 		else {
@@ -81,7 +81,7 @@ public class ElfDefaultGotPltMarkup {
 		for (MemoryBlock gotBlock : blocks) {
 			monitor.checkCanceled();
 
-			if (!gotBlock.getName().startsWith(ElfSectionHeaderConstants.dot_got)) {
+			if (!gotBlock.getName().startsWith(ElfSectionConstants.dot_got)) {
 				continue;
 			}
 			// Assume the .got section is read_only.  This is not true, but it helps with analysis
@@ -440,7 +440,7 @@ public class ElfDefaultGotPltMarkup {
 			return; //relocatable files do not have .PLT sections
 		}
 
-		MemoryBlock pltBlock = memory.getBlock(ElfSectionHeaderConstants.dot_plt);
+		MemoryBlock pltBlock = memory.getBlock(ElfSectionConstants.dot_plt);
 		// TODO: This is a band-aid since there are many PLT implementations and this assumes only one.
 		if (pltBlock == null || !pltBlock.isExecute() || pltBlock.getSize() <= assumedPltHeadSize) {
 			return;
@@ -456,7 +456,7 @@ public class ElfDefaultGotPltMarkup {
 		// Process PLT section
 		Address minAddress = pltBlock.getStart().add(skipPointers);
 		Address maxAddress = pltBlock.getEnd();
-		processLinkageTable(ElfSectionHeaderConstants.dot_plt, minAddress, maxAddress, monitor);
+		processLinkageTable(ElfSectionConstants.dot_plt, minAddress, maxAddress, monitor);
 	}
 
 	/**
@@ -594,7 +594,7 @@ public class ElfDefaultGotPltMarkup {
 		}
 		Memory memory = data.getProgram().getMemory();
 		MemoryBlock block = memory.getBlock(data.getAddress());
-		if (!block.isWrite() || block.getName().startsWith(ElfSectionHeaderConstants.dot_got)) {
+		if (!block.isWrite() || block.getName().startsWith(ElfSectionConstants.dot_got)) {
 			// .got blocks will be force to read-only by ElfDefaultGotPltMarkup
 			return;
 		}

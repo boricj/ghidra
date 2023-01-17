@@ -145,7 +145,7 @@ public interface ElfLoadHelper {
 
 	/**
 	 * Find the program address at which a specified offset within a section or segment was loaded/resolved.
-	 * @param section a segment or section header which was loaded to memory
+	 * @param section a segment or section which was loaded to memory
 	 * @param byteOffsetWithinSection offset within section
 	 * @return resolved load address or null if not loaded
 	 */

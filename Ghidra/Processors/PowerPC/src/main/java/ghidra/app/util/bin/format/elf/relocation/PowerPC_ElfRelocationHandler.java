@@ -81,7 +81,7 @@ public class PowerPC_ElfRelocationHandler extends ElfRelocationHandler {
 
 		ElfSymbol sym = elfRelocationContext.getSymbol(symbolIndex); // may be null
 
-//		if (sym.isLocal() && sym.getSectionHeaderIndex() != ElfSectionHeaderConstants.SHN_UNDEF) {
+//		if (sym.isLocal() && sym.getSectionIndex() != ElfSectionConstants.SHN_UNDEF) {
 //
 //			// see glibc - sysdeps/powerpc/powerpc32/dl-machine.h elf_machine_rela
 //			

@@ -22,7 +22,7 @@ import java.util.List;
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.MemoryByteProvider;
-import ghidra.app.util.bin.format.elf.ElfSectionHeaderConstants;
+import ghidra.app.util.bin.format.elf.ElfSectionConstants;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.ElfLoader;
 import ghidra.file.formats.android.dex.format.ClassDataItem;
@@ -66,7 +66,7 @@ public final class OatUtilities {
 			String executableFormat = program.getExecutableFormat();
 			if (ElfLoader.ELF_NAME.equals(executableFormat)) {
 				MemoryBlock roDataBlock =
-					program.getMemory().getBlock(ElfSectionHeaderConstants.dot_rodata);
+					program.getMemory().getBlock(ElfSectionConstants.dot_rodata);
 				if (roDataBlock != null) {
 					SymbolTable symbolTable = program.getSymbolTable();
 					Symbol oatDataSymbol = symbolTable.getPrimarySymbol(roDataBlock.getStart());
@@ -83,7 +83,7 @@ public final class OatUtilities {
 
 	public static Symbol getOatDataSymbol(Program program) {
 		if (isELF(program)) {
-			MemoryBlock block = program.getMemory().getBlock(ElfSectionHeaderConstants.dot_rodata);
+			MemoryBlock block = program.getMemory().getBlock(ElfSectionConstants.dot_rodata);
 			if (block != null) {
 				SymbolTable symbolTable = program.getSymbolTable();
 				Symbol oatDataSymbol = symbolTable.getPrimarySymbol(block.getStart());
@@ -98,7 +98,7 @@ public final class OatUtilities {
 
 	public static Symbol getOatExecSymbol(Program program) {
 		if (isELF(program)) {
-			MemoryBlock block = program.getMemory().getBlock(ElfSectionHeaderConstants.dot_text);
+			MemoryBlock block = program.getMemory().getBlock(ElfSectionConstants.dot_text);
 			if (block != null) {
 				SymbolTable symbolTable = program.getSymbolTable();
 				Symbol oatExecSymbol = symbolTable.getPrimarySymbol(block.getStart());
@@ -113,7 +113,7 @@ public final class OatUtilities {
 
 	public static Symbol getOatLastWordSymbol(Program program) {
 		if (isELF(program)) {
-			MemoryBlock block = program.getMemory().getBlock(ElfSectionHeaderConstants.dot_text);
+			MemoryBlock block = program.getMemory().getBlock(ElfSectionConstants.dot_text);
 			if (block != null) {
 				SymbolTable symbolTable = program.getSymbolTable();
 				List<Symbol> oatLastWordSymbols =

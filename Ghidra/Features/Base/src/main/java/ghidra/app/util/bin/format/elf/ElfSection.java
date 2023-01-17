@@ -74,7 +74,7 @@ import ghidra.util.StringUtilities;
  * </pre>
  */
 
-public class ElfSectionHeader implements ElfFileSection, StructConverter, Writeable {
+public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 
 	int sh_name;
 	int sh_type;
@@ -95,7 +95,7 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	private boolean modified = false;
 	private boolean bytesChanged = false;
 
-	public ElfSectionHeader(BinaryReader reader, ElfHeader header)
+	public ElfSection(BinaryReader reader, ElfHeader header)
 			throws IOException {
 		this.header = header;
 
@@ -129,10 +129,10 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 		//checkSize();
 
 		ByteProvider provider;
-		if (sh_type == ElfSectionHeaderConstants.SHT_NULL) {
+		if (sh_type == ElfSectionConstants.SHT_NULL) {
 			provider = ByteProvider.EMPTY_BYTEPROVIDER;
 		}
-		else if (sh_type == ElfSectionHeaderConstants.SHT_NOBITS || isInvalidOffset()) {
+		else if (sh_type == ElfSectionConstants.SHT_NOBITS || isInvalidOffset()) {
 			provider = new ByteArrayProvider(new byte[(int) sh_size]);
 		}
 		else {
@@ -141,20 +141,20 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 		this.reader = new BinaryReader(provider, reader.isLittleEndian());
 	}
 
-	ElfSectionHeader(ElfHeader header, MemoryBlock block, int sh_name, long imageBase)
+	ElfSection(ElfHeader header, MemoryBlock block, int sh_name, long imageBase)
 			throws MemoryAccessException {
 
 		this.header = header;
 		this.sh_name = sh_name;
 
 		if (block.isInitialized()) {
-			sh_type = ElfSectionHeaderConstants.SHT_PROGBITS;
+			sh_type = ElfSectionConstants.SHT_PROGBITS;
 		}
 		else {
-			sh_type = ElfSectionHeaderConstants.SHT_NOBITS;
+			sh_type = ElfSectionConstants.SHT_NOBITS;
 		}
-		sh_flags = ElfSectionHeaderConstants.SHF_ALLOC | ElfSectionHeaderConstants.SHF_WRITE |
-			ElfSectionHeaderConstants.SHF_EXECINSTR;
+		sh_flags = ElfSectionConstants.SHF_ALLOC | ElfSectionConstants.SHF_WRITE |
+			ElfSectionConstants.SHF_EXECINSTR;
 		sh_addr = block.getStart().getOffset();
 		sh_offset = block.getStart().getAddressableWordOffset() - imageBase;
 		sh_size = block.getSize();
@@ -172,14 +172,14 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 		modified = true;
 	}
 
-	ElfSectionHeader(ElfHeader header, String name, int sh_name, int type) {
+	ElfSection(ElfHeader header, String name, int sh_name, int type) {
 		this.header = header;
 		this.name = name;
 		this.sh_name = sh_name;
 		this.sh_type = type;
 
-		sh_flags = ElfSectionHeaderConstants.SHF_ALLOC | ElfSectionHeaderConstants.SHF_WRITE |
-			ElfSectionHeaderConstants.SHF_EXECINSTR;
+		sh_flags = ElfSectionConstants.SHF_ALLOC | ElfSectionConstants.SHF_WRITE |
+			ElfSectionConstants.SHF_EXECINSTR;
 		sh_link = 0;
 		sh_info = 0;
 		sh_addralign = 0;
@@ -304,14 +304,14 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	 * depends on the section type.
 	 *  
 	 * If sh_type is SHT_REL or SHT_RELA, then sh_info holds 
-	 * the section header index of the
+	 * the section index of the
 	 * section to which the relocation applies.
 	 * 
 	 * If sh_type is SHT_SYMTAB or SHT_DYNSYM, then sh_info
 	 * holds one greater than the symbol table index of the last
 	 * local symbol (binding STB_LOCAL).
 	 * 
-	 * @return the section header info
+	 * @return the section info
 	 */
 	public int getInfo() {
 		return sh_info;
@@ -322,21 +322,21 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	 * depends on the section type.
 	 * 
 	 * If sh_type is SHT_SYMTAB, SHT_DYNSYM, or SHT_DYNAMIC, 
-	 * then sh_link holds the section header table index of
+	 * then sh_link holds the section table index of
 	 * its associated string table.
 	 * 
 	 * If sh_type is SHT_REL, SHT_RELA, or SHT_HASH
-	 * sh_link holds the section header index of the 
+	 * sh_link holds the section index of the 
 	 * associated symbol table.
 	 * 
-	 * @return the section header link
+	 * @return the section link
 	 */
 	public int getLink() {
 		return sh_link;
 	}
 
 	/**
-	 * An index into the section header string table section, 
+	 * An index into the section string table section, 
 	 * giving the location of a null-terminated string which is the name of this section.
 	 * @return the index of the section name
 	 */
@@ -345,12 +345,12 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	}
 
 	void updateName() {
-		List<ElfSectionHeader> sections = header.getSections();
+		List<ElfSection> sections = header.getSections();
 		int e_shstrndx = header.e_shstrndx();
 		name = null;
 		try {
 			if (sh_name >= 0 && e_shstrndx > 0 && e_shstrndx < sections.size()) {
-				ElfSectionHeader section = sections.get(e_shstrndx);
+				ElfSection section = sections.get(e_shstrndx);
 				// read section name from string table
 				if (!section.isInvalidOffset()) {
 					BinaryReader reader = section.getReader();
@@ -410,9 +410,9 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	}
 
 	/**
-	 * Returns true if this section header's offset is invalid.
+	 * Returns true if this section's offset is invalid.
 	 * 
-	 * @return true if this section header's offset is invalid
+	 * @return true if this section's offset is invalid
 	 */
 	public boolean isInvalidOffset() {
 		return sh_offset < 0 ||
@@ -439,7 +439,7 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	}
 
 	/**
-	 * Get the adjusted size of the section in bytes (i.e., memory block) which relates to this section header; it may be zero
+	 * Get the adjusted size of the section in bytes (i.e., memory block) which relates to this section; it may be zero
 	 * if no block should be created.  The returned value reflects any adjustment the ElfExtension may require
 	 * based upon the specific processor/language implementation which may require filtering of file bytes
 	 * as read into memory.
@@ -458,12 +458,12 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	}
 
 	/**
-	 * Get header type as string.  ElfSectionHeaderType name will be returned
+	 * Get header type as string.  ElfSectionType name will be returned
 	 * if know, otherwise a numeric name of the form "SHT_0x12345678" will be returned.
 	 * @return header type as string
 	 */
 	public String getTypeAsString() {
-		ElfSectionHeaderType sectionHeaderType = header.getSectionHeaderType(sh_type);
+		ElfSectionType sectionHeaderType = header.getSectionType(sh_type);
 		if (sectionHeaderType != null) {
 			return sectionHeaderType.name;
 		}
@@ -476,14 +476,14 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	 * @throws IOException if an I/O error occurs while reading the file
 	 */
 	public byte[] getData() throws IOException {
-		if (sh_type == ElfSectionHeaderConstants.SHT_NOBITS) {
+		if (sh_type == ElfSectionConstants.SHT_NOBITS) {
 			return new byte[0];
 		}
 		if (data != null) {
 			return data;
 		}
 		if (reader == null) {
-			throw new UnsupportedOperationException("This ElfSectionHeader does not have a reader");
+			throw new UnsupportedOperationException("This ElfSection does not have a reader");
 		}
 		return reader.readByteArray(sh_offset, (int) sh_size);
 	}
@@ -497,7 +497,7 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	 */
 	public InputStream getDataStream() throws IOException {
 		if (reader == null) {
-			throw new UnsupportedOperationException("This ElfSectionHeader does not have a reader");
+			throw new UnsupportedOperationException("This ElfSection does not have a reader");
 		}
 		return reader.getByteProvider().getInputStream(sh_offset);
 	}
@@ -519,7 +519,7 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	 */
 	public void setData(byte[] data) {
 		bytesChanged = true;
-		if (sh_type == ElfSectionHeaderConstants.SHT_NOBITS) {
+		if (sh_type == ElfSectionConstants.SHT_NOBITS) {
 			throw new IllegalArgumentException("Cannot set data on section with type: SHT_NOBITS");
 		}
 		this.data = data;
@@ -621,13 +621,13 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 
 	private DataType getTypeDataType() {
 
-		HashMap<Integer, ElfSectionHeaderType> sectionHeaderTypeMap =
-			header.getSectionHeaderTypeMap();
+		HashMap<Integer, ElfSectionType> sectionHeaderTypeMap =
+			header.getSectionTypeMap();
 		if (sectionHeaderTypeMap == null) {
 			return DWordDataType.dataType;
 		}
 
-		String dtName = "Elf_SectionHeaderType";
+		String dtName = "Elf_SectionType";
 
 		String typeSuffix = header.getTypeSuffix();
 		if (typeSuffix != null) {
@@ -635,7 +635,7 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 		}
 
 		EnumDataType typeEnum = new EnumDataType(new CategoryPath("/ELF"), dtName, 4);
-		for (ElfSectionHeaderType type : sectionHeaderTypeMap.values()) {
+		for (ElfSectionType type : sectionHeaderTypeMap.values()) {
 			typeEnum.add(type.name, type.value);
 		}
 		return typeEnum;
@@ -655,10 +655,10 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 
 	@Override
 	public boolean equals(Object obj) {
-		if (!(obj instanceof ElfSectionHeader)) {
+		if (!(obj instanceof ElfSection)) {
 			return false;
 		}
-		ElfSectionHeader other = (ElfSectionHeader) obj;
+		ElfSection other = (ElfSection) obj;
 		return reader == other.reader && sh_name == other.sh_name && sh_type == other.sh_type &&
 			sh_flags == other.sh_flags && sh_addr == other.sh_addr &&
 			sh_offset == other.sh_offset && sh_size == other.sh_size && sh_link == other.sh_link &&
@@ -671,8 +671,8 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	 * @param address the address of the requested section
 	 * @return predicate
 	 */
-	public static Predicate<ElfSectionHeader> isSectionLoadHeaderContaining(long address) {
-		Predicate<ElfSectionHeader> predicate = section -> {
+	public static Predicate<ElfSection> isSectionLoadHeaderContaining(long address) {
+		Predicate<ElfSection> predicate = section -> {
 			// FIXME: verify
 			if (section.isAlloc()) {
 				long start = section.getVirtualAddress();
@@ -694,11 +694,11 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 	 * @param fileRangeLength length of file range in bytes
 	 * @return predicate
 	 */
-	public static Predicate<ElfSectionHeader> isSectionHeaderContainingFileRange(long fileOffset,
+	public static Predicate<ElfSection> isSectionContainingFileRange(long fileOffset,
 			long fileRangeLength) {
 		long maxOffset = fileOffset + fileRangeLength - 1;
-		Predicate<ElfSectionHeader> predicate = section -> {
-			if (section.getType() == ElfSectionHeaderConstants.SHT_NULL ||
+		Predicate<ElfSection> predicate = section -> {
+			if (section.getType() == ElfSectionConstants.SHT_NULL ||
 				section.isInvalidOffset()) {
 				return false;
 			}

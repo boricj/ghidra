@@ -73,7 +73,7 @@ public class X86_32_ElfExtension extends ElfExtension {
 		// the unresolved issue is to determine the length of the PLT area without a section
 		
 		ElfHeader elfHeader = elfLoadHelper.getElfHeader();
-		ElfSectionHeader pltSection = elfHeader.getSection(e -> e.getNameAsString().equals(ElfSectionHeaderConstants.dot_plt));
+		ElfSection pltSection = elfHeader.getSection(e -> e.getNameAsString().equals(ElfSectionConstants.dot_plt));
 		if (pltSection == null || !pltSection.isExecutable()) {
 			return;
 		}
