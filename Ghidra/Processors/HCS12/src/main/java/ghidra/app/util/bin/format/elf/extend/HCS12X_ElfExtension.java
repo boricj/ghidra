@@ -24,8 +24,8 @@ import ghidra.program.model.listing.Program;
 public class HCS12X_ElfExtension extends ElfExtension {
 
 	// Elf Program Header Extensions
-	public static final ElfProgramHeaderType PT_HCS12_ARCHEXT =
-		new ElfProgramHeaderType(0x70000000, "PT_HCS12X_ARCHEXT", "HCS12X extension");
+	public static final ElfSegmentType PT_HCS12_ARCHEXT =
+		new ElfSegmentType(0x70000000, "PT_HCS12X_ARCHEXT", "HCS12X extension");
 
 	// Elf Section Header Extensions
 	public static final ElfSectionHeaderType SHT_HCS12_ATTRIBUTES =
@@ -58,7 +58,7 @@ public class HCS12X_ElfExtension extends ElfExtension {
 
 	@Override
 	public Address getPreferredSegmentAddress(ElfLoadHelper elfLoadHelper,
-			ElfProgramHeader elfProgramHeader) {
+			ElfSegment elfProgramHeader) {
 
 		AddressSpace space = getPreferredSegmentAddressSpace(elfLoadHelper, elfProgramHeader);
 

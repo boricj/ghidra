@@ -45,8 +45,8 @@ public class ARM_ElfExtension extends ElfExtension {
 	public static final boolean APPLY_PC_BIAS_TO_RELATIVE_RELOCATIONS_DEFAULT = false; // reflects binutils
 
 	// Elf Program Header Extensions
-	public static final ElfProgramHeaderType PT_ARM_EXIDX =
-		new ElfProgramHeaderType(0x70000000, "PT_ARM_EXIDX", "Frame unwind information");
+	public static final ElfSegmentType PT_ARM_EXIDX =
+		new ElfSegmentType(0x70000000, "PT_ARM_EXIDX", "Frame unwind information");
 
 	// Elf Section Header Extensions
 	public static final ElfSectionHeaderType SHT_ARM_EXIDX =

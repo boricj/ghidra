@@ -45,7 +45,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 	private static final int PAD_LENGTH = 7;
 
-	private HashMap<Integer, ElfProgramHeaderType> programHeaderTypeMap;
+	private HashMap<Integer, ElfSegmentType> programHeaderTypeMap;
 	private HashMap<Integer, ElfSectionHeaderType> sectionHeaderTypeMap;
 	private HashMap<Integer, ElfDynamicType> dynamicTypeMap;
 
@@ -63,12 +63,12 @@ public class ElfHeader implements StructConverter, Writeable {
 	private short e_machine; //target architecture
 	private int e_version; //object file version
 	private long e_entry; //executable entry point
-	private long e_phoff; //program header table offset
+	private long e_phoff; //segment table offset
 	private long e_shoff; //section header table offset
 	private int e_flags; //processor-specific flags
 	private short e_ehsize; //elf header size
-	private short e_phentsize; //size of entries in the program header table
-	private int e_phnum; //number of enties in the program header table (may be extended and may not be preserved)
+	private short e_phentsize; //size of entries in the segment table
+	private int e_phnum; //number of enties in the segment table (may be extended and may not be preserved)
 	private short e_shentsize; //size of entries in the section header table
 	private int e_shnum; //number of enties in the section header table (may be extended and may not be preserved)
 	private int e_shstrndx; //section index of the section name string table (may be extended and may not be preserved)
@@ -78,7 +78,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	private Long preLinkImageBase = null;
 	private ElfSectionHeader section0 = null;
 	private List<ElfSectionHeader> sectionHeaders = new ArrayList<>();
-	private List<ElfProgramHeader> programHeaders = new ArrayList<>();
+	private List<ElfSegment> programHeaders = new ArrayList<>();
 	private List<ElfStringTable> stringTables = new ArrayList<>();
 	private List<ElfSymbolTable> symbolTables = new ArrayList<>();
 	private List<ElfRelocationTable> relocationTables = new ArrayList<>();
@@ -114,7 +114,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 		parsePreLinkImageBase(reader);
 
-		parseProgramHeaders(reader);
+		parseSegments(reader);
 
 		parseSectionHeaders(reader);
 
@@ -138,10 +138,10 @@ public class ElfHeader implements StructConverter, Writeable {
 			}
 		}
 
-		ElfProgramHeader loadHeader = getProgramHeader(
-			ElfProgramHeader.isProgramLoadHeaderContaining(address));
+		ElfSegment loadHeader = getSegment(
+			ElfSegment.isProgramLoadHeaderContaining(address));
 		if (loadHeader == null || loadHeader.getMemorySize() < length) {
-			throw new NotFoundException("No program header found covering " + length + " bytes at 0x" + Long.toHexString(address));
+			throw new NotFoundException("No segment found covering " + length + " bytes at 0x" + Long.toHexString(address));
 		}
 
 		return loadHeader.subSection(address - loadHeader.getVirtualAddress(), length, entrySize);
@@ -217,7 +217,7 @@ public class ElfHeader implements StructConverter, Writeable {
 			}
 
 			if (e_phnum == Short.toUnsignedInt(ElfConstants.PN_XNUM)) {
-				e_phnum = readExtendedProgramHeaderCount(reader); // use extended stored program header count
+				e_phnum = readExtendedSegmentCount(reader); // use extended stored segment count
 			}
 
 			if (e_shnum == 0) {
@@ -246,13 +246,13 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Read extended program header count (e_phnum) stored in first section header (ST_NULL) 
+	 * Read extended segment count (e_phnum) stored in first section header (ST_NULL) 
 	 * sh_info field value. This is done to overcome the short value limitation of the
 	 * e_phnum header field.  Returned value is restricted to the range 0..0x7fffffff.
-	 * @return extended program header count or 0 if not found or out of range
+	 * @return extended segment count or 0 if not found or out of range
 	 * @throws IOException if file IO error occurs
 	 */
-	private int readExtendedProgramHeaderCount(BinaryReader reader) throws IOException {
+	private int readExtendedSegmentCount(BinaryReader reader) throws IOException {
 		ElfSectionHeader s = getSection0(reader);
 		if (s != null && s.getType() == ElfSectionHeaderConstants.SHT_NULL) {
 			int val = s.sh_info;
@@ -296,7 +296,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	private void initElfLoadAdapter() {
 
 		programHeaderTypeMap = new HashMap<>();
-		ElfProgramHeaderType.addDefaultTypes(programHeaderTypeMap);
+		ElfSegmentType.addDefaultTypes(programHeaderTypeMap);
 
 		sectionHeaderTypeMap = new HashMap<>();
 		ElfSectionHeaderType.addDefaultTypes(sectionHeaderTypeMap);
@@ -306,7 +306,7 @@ public class ElfHeader implements StructConverter, Writeable {
 
 		ElfLoadAdapter extensionAdapter = ElfExtensionFactory.getLoadAdapter(this);
 		if (extensionAdapter != null) {
-			extensionAdapter.addProgramHeaderTypes(programHeaderTypeMap);
+			extensionAdapter.addSegmentTypes(programHeaderTypeMap);
 			extensionAdapter.addSectionHeaderTypes(sectionHeaderTypeMap);
 			extensionAdapter.addDynamicTypes(dynamicTypeMap);
 			elfLoadAdapter = extensionAdapter;
@@ -354,7 +354,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		return address - (preLinkImageBase != null ? preLinkImageBase : 0L);
 	}
 
-	protected HashMap<Integer, ElfProgramHeaderType> getProgramHeaderTypeMap() {
+	protected HashMap<Integer, ElfSegmentType> getSegmentTypeMap() {
 		return programHeaderTypeMap;
 	}
 
@@ -362,7 +362,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		return sectionHeaderTypeMap;
 	}
 
-	public ElfProgramHeaderType getProgramHeaderType(int type) {
+	public ElfSegmentType getSegmentType(int type) {
 		if (programHeaderTypeMap != null) {
 			return programHeaderTypeMap.get(type);
 		}
@@ -675,7 +675,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 		else {
 			try {
-				List<ElfProgramHeader> dynamicHeaders = getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_DYNAMIC);
+				List<ElfSegment> dynamicHeaders = getSegments(e -> e.getType() == ElfSegmentConstants.PT_DYNAMIC);
 
 				if (dynamicHeaders.size() >= 1) {
 					long vaddr = dynamicHeaders.get(0).getVirtualAddress();
@@ -685,7 +685,7 @@ public class ElfHeader implements StructConverter, Writeable {
 					dynamicFileSection = findFileSection(vaddr, size, entrySize);
 
 					if (dynamicHeaders.size() > 1) {
-						errorConsumer.accept("Multiple ELF dynamic table program headers found");
+						errorConsumer.accept("Multiple ELF dynamic table segments found");
 					}
 				}
 			}
@@ -784,10 +784,10 @@ public class ElfHeader implements StructConverter, Writeable {
 
 				ElfDynamicType dynamicHashType = getDynamicHashTableType();
 				long dynamicHashTableAddr = adjustAddressForPrelink(dynamicTable.getDynamicValue(dynamicHashType));
-				ElfProgramHeader hashTableLoadHeader = getProgramHeader(
-					ElfProgramHeader.isProgramLoadHeaderContaining(dynamicHashTableAddr));
+				ElfSegment hashTableLoadHeader = getSegment(
+					ElfSegment.isProgramLoadHeaderContaining(dynamicHashTableAddr));
 				if (hashTableLoadHeader == null) {
-					throw new NotFoundException("Couldn't find program header containing dynamic hash table");
+					throw new NotFoundException("Couldn't find segment containing dynamic hash table");
 				}
 
 				// determine symbol count from dynamic symbol hash table
@@ -993,33 +993,33 @@ public class ElfHeader implements StructConverter, Writeable {
 		sectionHeaders = new ArrayList<>(Arrays.asList(sectionHeadersArray));
 	}
 
-	private void parseProgramHeaders(BinaryReader reader)
+	private void parseSegments(BinaryReader reader)
 			throws IOException {
 		boolean missing = false;
-		ElfProgramHeader[] programHeadersArray = new ElfProgramHeader[e_phnum];
+		ElfSegment[] programHeadersArray = new ElfSegment[e_phnum];
 		for (int i = 0; i < e_phnum; ++i) {
 			long index = e_phoff + (i * e_phentsize);
 			if (!missing && !providerContainsRegion(reader, index, e_phentsize)) {
 				int unreadCnt = e_phnum - i;
 				errorConsumer.accept(
 					unreadCnt + " of " + e_phnum +
-						" program headers are truncated/missing from file");
+						" segments are truncated/missing from file");
 				missing = true;
 			}
 			reader.setPointerIndex(index);
-			programHeadersArray[i] = new ElfProgramHeader(reader, this);
+			programHeadersArray[i] = new ElfSegment(reader, this);
 		}
 
 		// TODO: Find sample file which requires this hack to verify its necessity
-		// HACK: 07/01/2013 - Added hack for malformed ELF file with only program header sections
+		// HACK: 07/01/2013 - Added hack for malformed ELF file with only segment sections
 		long size = 0;
-		for (ElfProgramHeader pheader : programHeadersArray) {
+		for (ElfSegment pheader : programHeadersArray) {
 			size += pheader.getFileSize();
 		}
 		if (size == reader.length()) {
 			// adjust program section file offset to be based on relative read offset
 			long relOffset = 0;
-			for (ElfProgramHeader pheader : programHeadersArray) {
+			for (ElfSegment pheader : programHeadersArray) {
 				pheader.setOffset(relOffset);
 				relOffset += pheader.getFileSize();
 			}
@@ -1075,7 +1075,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	/**
 	 * Returns the image base of this ELF. 
 	 * The image base is the virtual address of the first PT_LOAD
-	 * program header or 0 if no program headers. By default,
+	 * segment or 0 if no segments. By default,
 	 * the image base address should be treated as a addressable unit offset.s
 	 * @return the image base of this ELF
 	 */
@@ -1093,8 +1093,8 @@ public class ElfHeader implements StructConverter, Writeable {
 			int n = Math.min(programHeaders.size(), MAX_HEADERS_TO_CHECK_FOR_IMAGEBASE);
 			long minBase = -1;
 			for (int i = 0; i < n; i++) {
-				ElfProgramHeader header = programHeaders.get(i);
-				if (header.getType() == ElfProgramHeaderConstants.PT_LOAD) {
+				ElfSegment header = programHeaders.get(i);
+				if (header.getType() == ElfSegmentConstants.PT_LOAD) {
 					minBase = getMinBase(header.getVirtualAddress(), minBase);
 				}
 			}
@@ -1208,30 +1208,30 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * This member holds the size in bytes of one entry in the file's program header table;
+	 * This member holds the size in bytes of one entry in the file's segment table;
 	 * all entries are the same size.
-	 * @return the size in bytes of one program header table entry 
+	 * @return the size in bytes of one segment table entry 
 	 */
 	public short e_phentsize() {
 		return e_phentsize;
 	}
 
 	/**
-	 * This member holds the number of entries in the program header table. Thus the product
+	 * This member holds the number of entries in the segment table. Thus the product
 	 * of e_phentsize and unsigned e_phnum gives the table's size in bytes. If original 
 	 * e_phnum equals PNXNUM (0xffff) an attempt will be made to obtained the extended size
-	 * from section[0].sh_info field.  If a file has no program header table, e_phnum holds 
+	 * from section[0].sh_info field.  If a file has no segment table, e_phnum holds 
 	 * the value zero.
-	 * @return the number of entries in the program header table
+	 * @return the number of entries in the segment table
 	 */
-	public int getProgramHeaderCount() {
+	public int getSegmentCount() {
 		return e_phnum;
 	}
 
 	/**
-	 * This member holds the program header table's file offset in bytes. If the file has no
-	 * program header table, this member holds zero.
-	 * @return the program header table's file offset in bytes
+	 * This member holds the segment table's file offset in bytes. If the file has no
+	 * segment table, this member holds zero.
+	 * @return the segment table's file offset in bytes
 	 */
 	public long e_phoff() {
 		return e_phoff;
@@ -1354,34 +1354,34 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the program headers as defined in this ELF file.
-	 * @return the program headers as defined in this ELF file
+	 * Returns the segments as defined in this ELF file.
+	 * @return the segments as defined in this ELF file
 	 */
-	public List<ElfProgramHeader> getProgramHeaders() {
+	public List<ElfSegment> getSegments() {
 		return Collections.unmodifiableList(programHeaders);
 	}
 
 	/**
-	 * Returns the program headers matching the predicate.
-	 * @param predicate predicate for program header
-	 * @return the program headers matching the predicate
-	 * @see ElfProgramHeader
+	 * Returns the segments matching the predicate.
+	 * @param predicate predicate for segment
+	 * @return the segments matching the predicate
+	 * @see ElfSegment
 	 */
-	public List<ElfProgramHeader> getProgramHeaders(Predicate<ElfProgramHeader> predicate) {
+	public List<ElfSegment> getSegments(Predicate<ElfSegment> predicate) {
 		return programHeaders.stream().filter(predicate).toList();
 	}
 
 	/**
-	 * Returns the first program header matching the predicate, or null.
-	 * @param predicate for program header
-	 * @return the program header matching the predicate
+	 * Returns the first segment matching the predicate, or null.
+	 * @param predicate for segment
+	 * @return the segment matching the predicate
 	 */
-	public ElfProgramHeader getProgramHeader(Predicate<ElfProgramHeader> predicate) {
+	public ElfSegment getSegment(Predicate<ElfSegment> predicate) {
 		return programHeaders.stream().filter(predicate).findFirst().orElse(null);
 	}
 
 	/**
-	 * Returns the dynamic table defined by program header of type PT_DYNAMIC or the .dynamic program section.
+	 * Returns the dynamic table defined by segment of type PT_DYNAMIC or the .dynamic program section.
 	 * Or, null if one does not exist.
 	 * @return the dynamic table
 	 */
@@ -1616,7 +1616,7 @@ public class ElfHeader implements StructConverter, Writeable {
 		raf.write(dc.getBytes(e_phentsize));
 		if (e_phnum >= Short.toUnsignedInt(ElfConstants.PN_XNUM)) {
 			throw new IOException(
-				"Unsupported program header count serialization: " + e_phnum);
+				"Unsupported segment count serialization: " + e_phnum);
 		}
 		raf.write(dc.getBytes((short) e_phnum));
 		raf.write(dc.getBytes(e_shentsize));

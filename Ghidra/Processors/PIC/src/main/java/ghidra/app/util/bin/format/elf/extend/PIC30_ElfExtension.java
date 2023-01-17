@@ -110,7 +110,7 @@ public class PIC30_ElfExtension extends ElfExtension {
 
 	@Override
 	public AddressSpace getPreferredSegmentAddressSpace(ElfLoadHelper elfLoadHelper,
-			ElfProgramHeader elfProgramHeader) {
+			ElfSegment elfProgramHeader) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
 		if (isDataLoad(elfProgramHeader)) {
 			return language.getDefaultDataSpace();
@@ -132,7 +132,7 @@ public class PIC30_ElfExtension extends ElfExtension {
 		return dataLoadFileSize / 2;
 	}
 
-	private boolean isDataLoad(ElfProgramHeader elfProgramHeader) {
+	private boolean isDataLoad(ElfSegment elfProgramHeader) {
 		return !elfProgramHeader.isExecute();
 	}
 
@@ -147,7 +147,7 @@ public class PIC30_ElfExtension extends ElfExtension {
 		if (loadable instanceof ElfSectionHeader) {
 			return isDataLoad((ElfSectionHeader)loadable);
 		}
-		return isDataLoad((ElfProgramHeader)loadable);
+		return isDataLoad((ElfSegment)loadable);
 	}
 	
 	private boolean isDebugSection(ElfSectionHeader section) {
@@ -163,13 +163,13 @@ public class PIC30_ElfExtension extends ElfExtension {
 	}
 	
 	@Override
-	public long getAdjustedLoadSize(ElfProgramHeader elfProgramHeader) {
+	public long getAdjustedLoadSize(ElfSegment elfProgramHeader) {
 		long fileSize = elfProgramHeader.getFileSize();
 		return isDataLoad(elfProgramHeader) ? getAdjustedDataLoadSize(fileSize) : fileSize;
 	}
 
 	@Override
-	public long getAdjustedMemorySize(ElfProgramHeader elfProgramHeader) {
+	public long getAdjustedMemorySize(ElfSegment elfProgramHeader) {
 		long rawSize = elfProgramHeader.getMemorySize();
 		return isDataLoad(elfProgramHeader) ? getAdjustedDataLoadSize(rawSize) : rawSize;
 	}

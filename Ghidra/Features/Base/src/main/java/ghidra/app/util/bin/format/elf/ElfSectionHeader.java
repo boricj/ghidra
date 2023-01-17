@@ -542,7 +542,7 @@ public class ElfSectionHeader implements ElfFileSection, StructConverter, Writea
 
 	/**
 	 * Returns true if this section has been modified.
-	 * A modified section requires that a new program header
+	 * A modified section requires that a new segment
 	 * get created.
 	 * @return true if this section has been modified
 	 */

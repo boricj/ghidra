@@ -216,17 +216,17 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		RangeMap fileMap = new RangeMap();
 		fileMap.paintRange(0, byteProvider.length() - 1, -1); // -1: unallocated
 
-		List<ElfProgramHeader> segments = elf.getProgramHeaders();
+		List<ElfSegment> segments = elf.getSegments();
 		List<ElfSectionHeader> sections = elf.getSections();
 
 		monitor.setMessage("Examining file allocations...");
 		monitor.initialize(segments.size() + sections.size());
 
-		for (ElfProgramHeader segment : segments) {
+		for (ElfSegment segment : segments) {
 			monitor.checkCanceled();
 			monitor.incrementProgress(1);
 			long size = segment.getFileSize();
-			if (segment.getType() == ElfProgramHeaderConstants.PT_NULL ||
+			if (segment.getType() == ElfSegmentConstants.PT_NULL ||
 				segment.isInvalidOffset() || size <= 0) {
 				continue;
 			}
@@ -250,7 +250,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		// Ignore header regions which will always be allocated to blocks
 		int elfHeaderSize = elf.toDataType().getLength();
 		fileMap.paintRange(0, elfHeaderSize - 1, -4); // -4: header block
-		int programHeaderSize = elf.e_phentsize() * elf.getProgramHeaderCount();
+		int programHeaderSize = elf.e_phentsize() * elf.getSegmentCount();
 		if (programHeaderSize != 0) {
 			fileMap.paintRange(elf.e_phoff(), elf.e_phoff() + programHeaderSize - 1, -4); // -4: header block
 		}
@@ -321,7 +321,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private boolean isDiscardableFillerSegment(MemoryLoadable loadable, String blockName,
 			Address start, long fileOffset, long length) throws IOException {
-		if (elf.getSectionHeaderCount() == 0 || elf.getProgramHeaderCount() == 0) {
+		if (elf.getSectionHeaderCount() == 0 || elf.getSegmentCount() == 0) {
 			return false; // only prune if both sections and program headers are present
 		}
 		if (length > DISCARDABLE_SEGMENT_SIZE || !blockName.startsWith(SEGMENT_NAME_PREFIX)) {
@@ -574,10 +574,10 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 		setReadOnlyMemory(elf.getSection(e -> e.getNameAsString().equals(".data.rel.ro")), null);
 
-		for (ElfProgramHeader roSegment : elf.getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_GNU_RELRO)) {
+		for (ElfSegment roSegment : elf.getSegments(e -> e.getType() == ElfSegmentConstants.PT_GNU_RELRO)) {
 			// TODO: (GP-2730) Identify read-only region which should be transformed
-			setReadOnlyMemory(elf.getProgramHeader(
-				ElfProgramHeader.isProgramLoadHeaderContaining(roSegment.getVirtualAddress())),
+			setReadOnlyMemory(elf.getSegment(
+				ElfSegment.isProgramLoadHeaderContaining(roSegment.getVirtualAddress())),
 				null);
 		}
 	}
@@ -735,7 +735,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		monitor.setMessage("Processing interpreter...");
 		Address interpStrAddr = null;
 
-		List<ElfProgramHeader> interpProgramHeaders = elf.getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_INTERP);
+		List<ElfSegment> interpProgramHeaders = elf.getSegments(e -> e.getType() == ElfSegmentConstants.PT_INTERP);
 		if (interpProgramHeaders.size() != 0) {
 			long offset = interpProgramHeaders.get(0).getFileOffset();
 			if (offset == 0) {
@@ -1066,7 +1066,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private void markupProgramHeaders(TaskMonitor monitor) {
 
-		int headerCount = elf.getProgramHeaderCount();
+		int headerCount = elf.getSegmentCount();
 		int size = elf.e_phentsize() * headerCount;
 		if (size == 0) {
 			return;
@@ -1074,7 +1074,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 		monitor.setMessage("Markup Program Headers ...");
 
-		Structure phStructDt = (Structure) elf.getProgramHeaders().get(0).toDataType();
+		Structure phStructDt = (Structure) elf.getSegments().get(0).toDataType();
 		phStructDt = phStructDt.clone(program.getDataTypeManager());
 
 		Array arrayDt = new ArrayDataType(phStructDt, headerCount, size);
@@ -1102,17 +1102,17 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 				return;
 			}
 
-			List<ElfProgramHeader> programHeaders = elf.getProgramHeaders();
+			List<ElfSegment> programHeaders = elf.getSegments();
 			monitor.initialize(programHeaders.size());
 			int vaddrFieldIndex = elf.is64Bit() ? 3 : 2; // p_vaddr structure element index
 			for (int i = 0; i < programHeaders.size(); i++) {
-				ElfProgramHeader programHeader = programHeaders.get(i);
+				ElfSegment programHeader = programHeaders.get(i);
 				monitor.checkCanceled();
 				monitor.incrementProgress(1);
 
 				Data d = array.getComponent(i);
 				d.setComment(CodeUnit.EOL_COMMENT, programHeader.getComment());
-				if (programHeader.getType() == ElfProgramHeaderConstants.PT_NULL) {
+				if (programHeader.getType() == ElfSegmentConstants.PT_NULL) {
 					continue;
 				}
 				if (programHeader.getFileOffset() == 0) {
@@ -2721,8 +2721,8 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	 * @param elfProgramHeader elf program segment header
 	 * @return preferred load address space
 	 */
-	private AddressSpace getSegmentAddressSpace(ElfProgramHeader elfProgramHeader) {
-		if (elfProgramHeader.getType() != ElfProgramHeaderConstants.PT_LOAD &&
+	private AddressSpace getSegmentAddressSpace(ElfSegment elfProgramHeader) {
+		if (elfProgramHeader.getType() != ElfSegmentConstants.PT_LOAD &&
 			elfProgramHeader.getVirtualAddress() == 0) {
 			return AddressSpace.OTHER_SPACE;
 		}
@@ -2737,7 +2737,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	 * @param elfProgramHeader
 	 * @return segment load address
 	 */
-	private Address getSegmentLoadAddress(ElfProgramHeader elfProgramHeader) {
+	private Address getSegmentLoadAddress(ElfSegment elfProgramHeader) {
 		AddressSpace space = getSegmentAddressSpace(elfProgramHeader);
 		if (!space.isLoadedMemorySpace()) {
 			// handle non-loaded sections into the OTHER space
@@ -2805,15 +2805,15 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 // TODO: Watch out for negative long addresses !!!!!!
 
-			if (section instanceof ElfProgramHeader) {
-				ElfProgramHeader programHeader = (ElfProgramHeader) section;
+			if (section instanceof ElfSegment) {
+				ElfSegment programHeader = (ElfSegment) section;
 // FIXME! Inconsistent in use of VirtualAddress which is generally an addressable word offset - not byte offset
 				long offsetAddr = programHeader.getVirtualAddress() + byteOffsetWithinSection;
 
-				if (programHeader.getType() != ElfProgramHeaderConstants.PT_LOAD) {
+				if (programHeader.getType() != ElfSegmentConstants.PT_LOAD) {
 					// Check for PT_LOAD segment which may contain requested segment
-					ElfProgramHeader loadHeader = elf.getProgramHeader(
-						ElfProgramHeader.isProgramLoadHeaderContaining(offsetAddr));
+					ElfSegment loadHeader = elf.getSegment(
+						ElfSegment.isProgramLoadHeaderContaining(offsetAddr));
 					if (loadHeader != null) {
 						return findLoadAddress(loadHeader,
 							offsetAddr - loadHeader.getVirtualAddress());
@@ -2893,8 +2893,8 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		}
 
 		// Locate possible load of Elf header within segment
-		for (ElfProgramHeader segment : elf.getProgramHeaders()) {
-			if (segment.getType() == ElfProgramHeaderConstants.PT_NULL ||
+		for (ElfSegment segment : elf.getSegments()) {
+			if (segment.getType() == ElfSegmentConstants.PT_NULL ||
 				segment.isInvalidOffset()) {
 				continue;
 			}
@@ -2902,7 +2902,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 			long endOffset = startOffset + segment.getFileSize() - 1;
 			if (fileOffset >= startOffset && headerEndOffset <= endOffset) {
 				headerAddr = findLoadAddress(segment, fileOffset - segment.getFileOffset());
-				if (headerAddr != null && segment.getType() == ElfProgramHeaderConstants.PT_LOAD) {
+				if (headerAddr != null && segment.getType() == ElfSegmentConstants.PT_LOAD) {
 					return headerAddr;
 				}
 			}
@@ -2920,16 +2920,16 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	 */
 	private void expandProgramHeaderBlocks(TaskMonitor monitor) throws CancelledException {
 
-		List<ElfProgramHeader> elfProgramHeaders = elf.getProgramHeaders();
+		List<ElfSegment> elfProgramHeaders = elf.getSegments();
 
 		monitor.setMessage("Exapanding Program Segments...");
 		monitor.initialize(elfProgramHeaders.size());
 		for (int i = 0; i < elfProgramHeaders.size(); ++i) {
-			ElfProgramHeader elfProgramHeader = elfProgramHeaders.get(i);
+			ElfSegment elfProgramHeader = elfProgramHeaders.get(i);
 			monitor.checkCanceled();
 			monitor.incrementProgress(1);
 
-			if (elfProgramHeader.getType() == ElfProgramHeaderConstants.PT_LOAD) {
+			if (elfProgramHeader.getType() == ElfSegmentConstants.PT_LOAD) {
 
 				MemoryBlock block = null;
 				AddressSpace space;
@@ -3032,28 +3032,28 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private void processProgramHeaders(TaskMonitor monitor) throws CancelledException {
 
-		if (elf.isRelocatable() && elf.getProgramHeaderCount() != 0) {
+		if (elf.isRelocatable() && elf.getSegmentCount() != 0) {
 			log("Ignoring unexpected program headers for relocatable ELF (e_phnum=" +
-				elf.getProgramHeaderCount() + ")");
+				elf.getSegmentCount() + ")");
 			return;
 		}
 
 		boolean includeOtherBlocks = ElfLoaderOptionsFactory.includeOtherBlocks(options);
 
-		List<ElfProgramHeader> elfProgramHeaders = elf.getProgramHeaders();
+		List<ElfSegment> elfProgramHeaders = elf.getSegments();
 
 		monitor.setMessage("Processing program headers...");
 		monitor.initialize(elfProgramHeaders.size());
 		for (int i = 0; i < elfProgramHeaders.size(); ++i) {
-			ElfProgramHeader elfProgramHeader = elfProgramHeaders.get(i);
+			ElfSegment elfProgramHeader = elfProgramHeaders.get(i);
 			monitor.checkCanceled();
 			monitor.incrementProgress(1);
 
-			if (elfProgramHeader.getType() == ElfProgramHeaderConstants.PT_NULL) {
+			if (elfProgramHeader.getType() == ElfSegmentConstants.PT_NULL) {
 				continue;
 			}
 			long fileOffset = elfProgramHeader.getFileOffset();
-			if (elfProgramHeader.getType() != ElfProgramHeaderConstants.PT_LOAD) {
+			if (elfProgramHeader.getType() != ElfSegmentConstants.PT_LOAD) {
 				if (!includeOtherBlocks) {
 					continue;
 				}
@@ -3062,8 +3062,8 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 						"] with invalid file offset");
 					continue;
 				}
-				if (elf.getProgramHeader(
-					ElfProgramHeader.isProgramLoadHeaderContainingFileOffset(fileOffset)) != null) {
+				if (elf.getSegment(
+					ElfSegment.isProgramLoadHeaderContainingFileOffset(fileOffset)) != null) {
 					continue;
 				}
 				ElfSectionHeader section = elf.getSection(
@@ -3090,7 +3090,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	 * @param segmentNumber program header index number
 	 * @throws AddressOutOfBoundsException if an invalid memory address is encountered
 	 */
-	private void processProgramHeader(ElfProgramHeader elfProgramHeader, int segmentNumber)
+	private void processProgramHeader(ElfSegment elfProgramHeader, int segmentNumber)
 			throws AddressOutOfBoundsException {
 
 // FIXME: If physical and virtual addresses do not match this may be an overlay situation.
@@ -3143,7 +3143,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 					elfProgramHeader.isWrite(),
 					maintainExecuteBit ? elfProgramHeader.isExecute() : false, comment,
 					isFragmentationOK,
-					elfProgramHeader.getType() == ElfProgramHeaderConstants.PT_LOAD);
+					elfProgramHeader.getType() == ElfSegmentConstants.PT_LOAD);
 			}
 
 			// NOTE: Uninitialized portions of segments will be added via expandProgramHeaderBlocks
@@ -3155,9 +3155,9 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		}
 	}
 
-	private String getSegmentName(ElfProgramHeader elfProgramHeader, int segmentNumber) {
+	private String getSegmentName(ElfSegment elfProgramHeader, int segmentNumber) {
 		int headerType = elfProgramHeader.getType();
-		if (headerType == ElfProgramHeaderConstants.PT_NOTE) {
+		if (headerType == ElfSegmentConstants.PT_NOTE) {
 			return "_elfNote";
 		}
 		return String.format("%s%d", SEGMENT_NAME_PREFIX, segmentNumber);
@@ -3332,8 +3332,8 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		if (sectionByteLength == 0 &&
 			elfSectionToLoad.getType() == ElfSectionHeaderConstants.SHT_PROGBITS) {
 			// Check for and consume uninitialized portion of PT_LOAD segment if possible
-			ElfProgramHeader loadHeader = elf.getProgramHeader(
-				ElfProgramHeader.isProgramLoadHeaderContaining(addr));
+			ElfSegment loadHeader = elf.getSegment(
+				ElfSegment.isProgramLoadHeaderContaining(addr));
 			if (loadHeader != null) {
 				// NOTE: should never apply to relocatable ELF
 				Address segmentStart = getSegmentLoadAddress(loadHeader);

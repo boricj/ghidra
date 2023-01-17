@@ -24,8 +24,8 @@ import ghidra.program.model.lang.Language;
 public class AARCH64_ElfExtension extends ElfExtension {
 
 	// Elf Program Header Extensions
-	public static final ElfProgramHeaderType PT_AARCH64_ARCHEXT =
-		new ElfProgramHeaderType(0x70000000, "PT_AARCH64_ARCHEXT", "AARCH64 extension");
+	public static final ElfSegmentType PT_AARCH64_ARCHEXT =
+		new ElfSegmentType(0x70000000, "PT_AARCH64_ARCHEXT", "AARCH64 extension");
 
 	// Elf Section Header Extensions
 	public static final ElfSectionHeaderType SHT_AARCH64_ATTRIBUTES =

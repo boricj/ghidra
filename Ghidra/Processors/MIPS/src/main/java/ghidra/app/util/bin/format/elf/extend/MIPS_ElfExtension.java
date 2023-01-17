@@ -46,14 +46,14 @@ public class MIPS_ElfExtension extends ElfExtension {
 	public static final String MIPS_GP0_VALUE_SYMBOL = "_mips_gp0_value";
 
 	// Elf Program Header Extensions
-	public static final ElfProgramHeaderType PT_MIPS_REGINFO = new ElfProgramHeaderType(0x70000000,
+	public static final ElfSegmentType PT_MIPS_REGINFO = new ElfSegmentType(0x70000000,
 		"PT_MIPS_REGINFO", "Register usage information.  Identifies one .reginfo section");
-	public static final ElfProgramHeaderType PT_MIPS_RTPROC =
-		new ElfProgramHeaderType(0x70000001, "PT_MIPS_RTPROC", "Runtime procedure table");
-	public static final ElfProgramHeaderType PT_MIPS_OPTIONS =
-		new ElfProgramHeaderType(0x70000002, "PT_MIPS_OPTIONS", ".MIPS.options section");
-	public static final ElfProgramHeaderType PT_MIPS_ABIFLAGS =
-		new ElfProgramHeaderType(0x70000003, "PT_MIPS_ABIFLAGS", "Records ABI related flags");
+	public static final ElfSegmentType PT_MIPS_RTPROC =
+		new ElfSegmentType(0x70000001, "PT_MIPS_RTPROC", "Runtime procedure table");
+	public static final ElfSegmentType PT_MIPS_OPTIONS =
+		new ElfSegmentType(0x70000002, "PT_MIPS_OPTIONS", ".MIPS.options section");
+	public static final ElfSegmentType PT_MIPS_ABIFLAGS =
+		new ElfSegmentType(0x70000003, "PT_MIPS_ABIFLAGS", "Records ABI related flags");
 
 	// Elf Section Header Extensions
 	public static final ElfSectionHeaderType SHT_MIPS_LIBLIST =
@@ -501,7 +501,7 @@ public class MIPS_ElfExtension extends ElfExtension {
 		Address mipsOptionsAddr = null;
 		Address regInfoAddr = null;
 
-		for (ElfProgramHeader programHeader : elf.getProgramHeaders()) {
+		for (ElfSegment programHeader : elf.getSegments()) {
 			int headertype = programHeader.getType();
 			if (headertype == PT_MIPS_OPTIONS.value) {
 				mipsOptionsAddr = elfLoadHelper.findLoadAddress(programHeader, 0);

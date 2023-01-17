@@ -31,13 +31,13 @@ import ghidra.util.DataConverter;
 import ghidra.util.StringUtilities;
 
 /**
- * An executable or shared object file's program header table is an 
+ * An executable or shared object file's segment table is an 
  * array of structures, each describing a segment
  * or other information the system needs to prepare the program for execution. 
  * An object file segment contains one or more sections. 
  * Program headers are meaningful only for executable 
  * and shared object files. A file specifies its 
- * own program header size with the ELF
+ * own segment size with the ELF
  * header's e_phentsize and e_phnum members.
  * Some entries describe process segments; others give supplementary information and do not contribute to
  * the process image. Segment entries may appear in any order. Except for PT_LOAD segment 
@@ -67,8 +67,8 @@ import ghidra.util.StringUtilities;
  * } Elf64_Phdr;
  * </pre>
  */
-public class ElfProgramHeader
-		implements ElfFileSection, StructConverter, Comparable<ElfProgramHeader>, Writeable {
+public class ElfSegment
+		implements ElfFileSection, StructConverter, Comparable<ElfSegment>, Writeable {
 
 	protected ElfHeader header;
 
@@ -83,7 +83,7 @@ public class ElfProgramHeader
 
 	private BinaryReader reader;
 
-	public ElfProgramHeader(BinaryReader reader, ElfHeader header)
+	public ElfSegment(BinaryReader reader, ElfHeader header)
 			throws IOException {
 		this.header = header;
 
@@ -111,14 +111,14 @@ public class ElfProgramHeader
 		if (p_memsz > p_filesz) {
 			//This case occurs when the data segment has both
 			//initialized and uninitialized sections.
-			//For example, the data program header may be comprised
+			//For example, the data segment may be comprised
 			//of ".data", ".dynamic", ".ctors", ".dtors", ".jcr", 
 			//and ".bss".
 			//TODO Err.warn(this, "Program Header: extra bytes");
 		}
 
 		ByteProvider provider;
-		if (p_type == ElfProgramHeaderConstants.PT_NULL) {
+		if (p_type == ElfSegmentConstants.PT_NULL) {
 			provider = ByteProvider.EMPTY_BYTEPROVIDER;
 		}
 		else {
@@ -126,7 +126,7 @@ public class ElfProgramHeader
 			if (p_memsz > p_filesz) {
 				//This case occurs when the data segment has both
 				//initialized and uninitialized sections.
-				//For example, the data program header may be comprised
+				//For example, the data segment may be comprised
 				//of ".data", ".dynamic", ".ctors", ".dtors", ".jcr", 
 				//and ".bss".
 				provider = new UnlimitedByteProviderWrapper(provider, 0, p_memsz);
@@ -136,23 +136,23 @@ public class ElfProgramHeader
 	}
 
 	/**
-	 * Constructs a new program header with the specified type.
+	 * Constructs a new segment with the specified type.
 	 * @param header ELF header
-	 * @param type the new type of the program header
+	 * @param type the new type of the segment
 	 */
-	public ElfProgramHeader(ElfHeader header, int type) {
+	public ElfSegment(ElfHeader header, int type) {
 		this.header = header;
 
 		p_type = type;
-		p_flags = ElfProgramHeaderConstants.PF_R | ElfProgramHeaderConstants.PF_W |
-			ElfProgramHeaderConstants.PF_X;
+		p_flags = ElfSegmentConstants.PF_R | ElfSegmentConstants.PF_W |
+			ElfSegmentConstants.PF_X;
 		p_align = 0x1000;
 		p_paddr = 0xffffffff;
 		p_vaddr = 0xffffffff;
 	}
 
 	/**
-	 * Return ElfHeader associated with this program header
+	 * Return ElfHeader associated with this segment
 	 * @return ElfHeader
 	 */
 	public ElfHeader getElfHeader() {
@@ -187,12 +187,12 @@ public class ElfProgramHeader
 	}
 
 	/**
-	 * Get header type as string.  ElfProgramHeaderType name will be returned
+	 * Get header type as string.  ElfSegmentType name will be returned
 	 * if know, otherwise a numeric name of the form "PT_0x12345678" will be returned.
 	 * @return header type as string
 	 */
 	public String getTypeAsString() {
-		ElfProgramHeaderType programHeaderType = header.getProgramHeaderType(p_type);
+		ElfSegmentType programHeaderType = header.getSegmentType(p_type);
 		if (programHeaderType != null) {
 			return programHeaderType.name;
 		}
@@ -209,7 +209,7 @@ public class ElfProgramHeader
 	 * @return header description
 	 */
 	public String getDescription() {
-		ElfProgramHeaderType programHeaderType = header.getProgramHeaderType(p_type);
+		ElfSegmentType programHeaderType = header.getSegmentType(p_type);
 		if (programHeaderType != null) {
 			String description = programHeaderType.description;
 			if (description != null && description.length() != 0) {
@@ -288,15 +288,15 @@ public class ElfProgramHeader
 	}
 
 	/**
-	 * Get the unadjusted memory size in bytes specified by this program header; it may be zero.
-	 * @return the unadjusted memory size in bytes specified by this program header
+	 * Get the unadjusted memory size in bytes specified by this segment; it may be zero.
+	 * @return the unadjusted memory size in bytes specified by this segment
 	 */
 	public long getMemorySize() {
 		return p_memsz;
 	}
 
 	/**
-	 * Get the adjusted memory size in bytes of the memory block which relates to this program header; it may be zero
+	 * Get the adjusted memory size in bytes of the memory block which relates to this segment; it may be zero
 	 * if no block should be created.  The returned value reflects any adjustment the ElfExtension may require
 	 * based upon the specific processor/language implementation which may require filtering of file bytes
 	 * as loaded into memory.
@@ -308,7 +308,7 @@ public class ElfProgramHeader
 
 	/**
 	 * Get the adjusted file load size (i.e., filtered load size) to be loaded into memory block which relates to 
-	 * this program header; it may be zero if no block should be created.  The returned value reflects any adjustment 
+	 * this segment; it may be zero if no block should be created.  The returned value reflects any adjustment 
 	 * the ElfExtension may require based upon the specific processor/language implementation which may 
 	 * require filtering of file bytes as loaded into memory.
 	 * @return the number of bytes to be loaded into the resulting memory block
@@ -335,9 +335,9 @@ public class ElfProgramHeader
 	}
 
 	/**
-	 * Return true if this program header's offset is invalid.
+	 * Return true if this segment's offset is invalid.
 	 * 
-	 * @return true if this program header's offset is invalid
+	 * @return true if this segment's offset is invalid
 	 */
 	public boolean isInvalidOffset() {
 		return p_offset < 0 || (header.is32Bit() && p_offset == ElfConstants.ELF32_INVALID_OFFSET);
@@ -345,15 +345,15 @@ public class ElfProgramHeader
 
 	/**
 	 * Compute the file offset associated with the specified loaded virtual address 
-	 * defined by this PT_LOAD program header.  This can be useful when attempting to locate
+	 * defined by this PT_LOAD segment.  This can be useful when attempting to locate
 	 * addresses defined by the PT_DYNAMIC section.
 	 * @param virtualAddress a memory address which has already had the PRElink adjustment applied
 	 * @return computed file offset or -1 if virtual address not contained within this header
-	 * @see ElfProgramHeader#isProgramLoadHeaderContaining(long) for obtaining PT_LOAD segment which contains
+	 * @see ElfSegment#isProgramLoadHeaderContaining(long) for obtaining PT_LOAD segment which contains
 	 * virtualAddress
 	 */
 	public long getOffset(long virtualAddress) { // TODO: addressable unit size to byte offset may be a problem
-		if (p_type != ElfProgramHeaderConstants.PT_LOAD || p_filesz == 0 || p_memsz == 0) {
+		if (p_type != ElfSegmentConstants.PT_LOAD || p_filesz == 0 || p_memsz == 0) {
 			throw new UnsupportedOperationException("virtualAddress not loaded by this segment");
 		}
 		if (getMemorySize() != getAdjustedMemorySize()) {
@@ -402,7 +402,7 @@ public class ElfProgramHeader
 	/**
 	 * This member tells what kind of segment this array element describes or how to interpret
 	 * the array element's information. Type values and their meanings appear below.
-	 * @return the program header type
+	 * @return the segment type
 	 */
 	public int getType() {
 		return p_type;
@@ -449,13 +449,13 @@ public class ElfProgramHeader
 
 	private DataType getTypeDataType() {
 
-		HashMap<Integer, ElfProgramHeaderType> programHeaderTypeMap =
-			header.getProgramHeaderTypeMap();
+		HashMap<Integer, ElfSegmentType> programHeaderTypeMap =
+			header.getSegmentTypeMap();
 		if (programHeaderTypeMap == null) {
 			return DWordDataType.dataType;
 		}
 
-		String dtName = "Elf_ProgramHeaderType";
+		String dtName = "Elf_SegmentType";
 
 		String typeSuffix = header.getTypeSuffix();
 		if (typeSuffix != null) {
@@ -463,7 +463,7 @@ public class ElfProgramHeader
 		}
 
 		EnumDataType typeEnum = new EnumDataType(new CategoryPath("/ELF"), dtName, 4);
-		for (ElfProgramHeaderType type : programHeaderTypeMap.values()) {
+		for (ElfSegmentType type : programHeaderTypeMap.values()) {
 			typeEnum.add(type.name, type.value);
 		}
 		return typeEnum;
@@ -483,10 +483,10 @@ public class ElfProgramHeader
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 */
 	@Override
-	public int compareTo(ElfProgramHeader that) {
+	public int compareTo(ElfSegment that) {
 		//sort the headers putting 0xffffffff (new guys)
 		//at the bottom...
-		if (this.p_type == ElfProgramHeaderConstants.PT_LOAD) {
+		if (this.p_type == ElfSegmentConstants.PT_LOAD) {
 			if (this.p_vaddr < that.p_vaddr) {
 				if (this.p_vaddr == 0xffffffff) {
 					return 1;
@@ -510,24 +510,24 @@ public class ElfProgramHeader
 
 	@Override
 	public boolean equals(Object obj) {
-		if (!(obj instanceof ElfProgramHeader)) {
+		if (!(obj instanceof ElfSegment)) {
 			return false;
 		}
-		ElfProgramHeader other = (ElfProgramHeader) obj;
+		ElfSegment other = (ElfSegment) obj;
 		return reader == other.reader && p_type == other.p_type && p_flags == other.p_flags &&
 			p_offset == other.p_offset && p_vaddr == other.p_vaddr && p_paddr == other.p_paddr &&
 			p_filesz == other.p_filesz && p_memsz == other.p_memsz && p_align == other.p_align;
 	}
 
 	/**
-	 * Returns a predicate matching a PT_LOAD program header which loads a range
+	 * Returns a predicate matching a PT_LOAD segment which loads a range
 	 * containing the specified address.
-	 * @param virtualAddr the address of the requested program header
+	 * @param virtualAddr the address of the requested segment
 	 * @return predicate
 	 */
-	public static Predicate<ElfProgramHeader> isProgramLoadHeaderContaining(long virtualAddr) {
-		Predicate<ElfProgramHeader> predicate = segment -> {
-			if (segment.getType() == ElfProgramHeaderConstants.PT_LOAD) {
+	public static Predicate<ElfSegment> isProgramLoadHeaderContaining(long virtualAddr) {
+		Predicate<ElfSegment> predicate = segment -> {
+			if (segment.getType() == ElfSegmentConstants.PT_LOAD) {
 				long start = segment.getVirtualAddress();
 				long end = segment.getAdjustedMemorySize() - 1 + start;
 				if (virtualAddr >= start && virtualAddr <= end) {
@@ -542,15 +542,15 @@ public class ElfProgramHeader
 	}
 
 	/**
-	 * Returns a predicate matching a PT_LOAD program header which loads a range
+	 * Returns a predicate matching a PT_LOAD segment which loads a range
 	 * containing the specified file offset.
 	 * @param offset the file offset to be loaded
 	 * @return predicate
 	 */
-	public static Predicate<ElfProgramHeader> isProgramLoadHeaderContainingFileOffset(long offset) {
-		Predicate<ElfProgramHeader> predicate = segment -> {
+	public static Predicate<ElfSegment> isProgramLoadHeaderContainingFileOffset(long offset) {
+		Predicate<ElfSegment> predicate = segment -> {
 			if (segment == null ||
-				segment.getType() != ElfProgramHeaderConstants.PT_LOAD ||
+				segment.getType() != ElfSegmentConstants.PT_LOAD ||
 				segment.isInvalidOffset()) {
 				return false;
 			}

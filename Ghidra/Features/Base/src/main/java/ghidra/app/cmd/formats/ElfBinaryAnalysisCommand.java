@@ -214,13 +214,13 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 	private void processProgramHeaders(ElfHeader elf, Listing listing) throws Exception {
 
-		int headerCount = elf.getProgramHeaderCount();
+		int headerCount = elf.getSegmentCount();
 		int size = elf.e_phentsize() * headerCount;
 		if (size == 0) {
 			return;
 		}
 
-		Structure phStructDt = (Structure) elf.getProgramHeaders().get(0).toDataType();
+		Structure phStructDt = (Structure) elf.getSegments().get(0).toDataType();
 		phStructDt = phStructDt.clone(listing.getDataTypeManager());
 		Array arrayDt = new ArrayDataType(phStructDt, headerCount, size);
 
@@ -228,9 +228,9 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 		createFragment(phStructDt.getName(), array.getMinAddress(), array.getLength());
 
-		List<ElfProgramHeader> programHeaders = elf.getProgramHeaders();
+		List<ElfSegment> programHeaders = elf.getSegments();
 		for (int i = 0; i < programHeaders.size(); i++) {
-			ElfProgramHeader programHeader = programHeaders.get(i);
+			ElfSegment programHeader = programHeaders.get(i);
 			monitor.checkCanceled();
 			Data d = array.getComponent(i);
 			d.setComment(CodeUnit.EOL_COMMENT, programHeader.getComment());
@@ -243,7 +243,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 	private void processInterpretor(ElfHeader elf, ByteProvider provider, Program program)
 			throws CancelledException {
-		for (ElfProgramHeader programHeader : elf.getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_INTERP)) {
+		for (ElfSegment programHeader : elf.getSegments(e -> e.getType() == ElfSegmentConstants.PT_INTERP)) {
 			monitor.checkCanceled();
 			long offset = programHeader.getFileOffset();
 			if (offset == 0) {
@@ -337,8 +337,8 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 		long dynamicRefAddr = dynamic.getValue();
 
-		ElfProgramHeader programLoadHeader = elf.getProgramHeader(
-			ElfProgramHeader.isProgramLoadHeaderContaining(dynamicRefAddr));
+		ElfSegment programLoadHeader = elf.getSegment(
+			ElfSegment.isProgramLoadHeaderContaining(dynamicRefAddr));
 		if (programLoadHeader == null) {
 			return; // unable to find loaded
 		}

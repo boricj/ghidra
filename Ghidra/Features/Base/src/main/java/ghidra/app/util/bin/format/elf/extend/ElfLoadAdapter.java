@@ -66,26 +66,26 @@ public class ElfLoadAdapter {
 
 	/**
 	 * Add all extension specific Program Header types (e.g., PT_ prefix).
-	 * This method will add all those statically defined ElfProgramHeaderType fields
+	 * This method will add all those statically defined ElfSegmentType fields
 	 * within this class.
-	 * @param programHeaderTypeMap map to which ElfProgramHeaderType definitions should be added
+	 * @param programHeaderTypeMap map to which ElfSegmentType definitions should be added
 	 */
-	public final void addProgramHeaderTypes(
-			Map<Integer, ElfProgramHeaderType> programHeaderTypeMap) {
+	public final void addSegmentTypes(
+			Map<Integer, ElfSegmentType> programHeaderTypeMap) {
 
 		for (Field field : getClass().getDeclaredFields()) {
 			String name = null;
 			try {
 				if (Modifier.isStatic(field.getModifiers()) &&
-					field.getType().equals(ElfProgramHeaderType.class)) {
-					ElfProgramHeaderType type = (ElfProgramHeaderType) field.get(this);
+					field.getType().equals(ElfSegmentType.class)) {
+					ElfSegmentType type = (ElfSegmentType) field.get(this);
 					name = type.name;
-					ElfProgramHeaderType.addProgramHeaderType(type, programHeaderTypeMap);
+					ElfSegmentType.addSegmentType(type, programHeaderTypeMap);
 				}
 			}
 			catch (DuplicateNameException e) {
 				Msg.error(this,
-					"Invalid ElfProgramHeaderType(" + name + ") defined by " + getClass().getName(),
+					"Invalid ElfSegmentType(" + name + ") defined by " + getClass().getName(),
 					e);
 			}
 			catch (IllegalArgumentException | IllegalAccessException e) {
@@ -130,14 +130,14 @@ public class ElfLoadAdapter {
 	 * This method may only return a physical address space and not an overlay 
 	 * address space.
 	 * @param elfLoadHelper load helper object
-	 * @param elfProgramHeader elf program segment header
+	 * @param elfSegment elf program segment header
 	 * @return preferred load address space
 	 */
 	public AddressSpace getPreferredSegmentAddressSpace(ElfLoadHelper elfLoadHelper,
-			ElfProgramHeader elfProgramHeader) {
+			ElfSegment elfSegment) {
 
 		Program program = elfLoadHelper.getProgram();
-		if (elfProgramHeader.isExecute()) {
+		if (elfSegment.isExecute()) {
 			return program.getAddressFactory().getDefaultAddressSpace();
 		}
 		// segment is not marked execute, use the data space by default
@@ -149,17 +149,17 @@ public class ElfLoadAdapter {
 	 * This method may only return a physical address and not an overlay 
 	 * address.
 	 * @param elfLoadHelper load helper object
-	 * @param elfProgramHeader elf program segment header
+	 * @param elfSegment elf program segment header
 	 * @return preferred load address
 	 */
 	public Address getPreferredSegmentAddress(ElfLoadHelper elfLoadHelper,
-			ElfProgramHeader elfProgramHeader) {
+			ElfSegment elfSegment) {
 
 		Program program = elfLoadHelper.getProgram();
 
-		AddressSpace space = getPreferredSegmentAddressSpace(elfLoadHelper, elfProgramHeader);
+		AddressSpace space = getPreferredSegmentAddressSpace(elfLoadHelper, elfSegment);
 
-		long addrWordOffset = elfProgramHeader.getVirtualAddress();
+		long addrWordOffset = elfSegment.getVirtualAddress();
 
 		if (space == program.getAddressFactory().getDefaultAddressSpace()) {
 			addrWordOffset += elfLoadHelper.getImageBaseWordAdjustmentOffset();
@@ -279,9 +279,9 @@ public class ElfLoadAdapter {
 	 * Perform extension specific processing of Elf image during program load.
 	 * The following loading steps will have already been completed:
 	 * <pre>
-	 * 1. default processing of all program headers and section headers
-	 * 2. memory resolution and loading of all program headers and section headers
-	 * 3. Markup completed of Elf header, program headers, section headers, dynamic table,
+	 * 1. default processing of all segments and section headers
+	 * 2. memory resolution and loading of all segments and section headers
+	 * 3. Markup completed of Elf header, segments, section headers, dynamic table,
 	 *    string tables, and symbol tables.
 	 * </pre>
 	 * Markup and application of relocation tables will NOT have been done yet. 
@@ -355,32 +355,32 @@ public class ElfLoadAdapter {
 
 	/**
 	 * Get the write permission for the specified segment.
-	 * @param segment program header object
-	 * @return true if write enabled, else false or null to use standard Elf program header
+	 * @param segment segment object
+	 * @return true if write enabled, else false or null to use standard Elf segment
 	 * flags to make the determination.
 	 */
-	public Boolean isSegmentWritable(ElfProgramHeader segment) {
-		return (segment.getFlags() & ElfProgramHeaderConstants.PF_W) != 0;
+	public Boolean isSegmentWritable(ElfSegment segment) {
+		return (segment.getFlags() & ElfSegmentConstants.PF_W) != 0;
 	}
 
 	/**
 	 * Get the read permission for the specified segment.
-	 * @param segment program header object
-	 * @return true if read enabled, else false or null to use standard Elf program header
+	 * @param segment segment object
+	 * @return true if read enabled, else false or null to use standard Elf segment
 	 * flags to make the determination.
 	 */
-	public Boolean isSegmentReadable(ElfProgramHeader segment) {
-		return (segment.getFlags() & ElfProgramHeaderConstants.PF_R) != 0;
+	public Boolean isSegmentReadable(ElfSegment segment) {
+		return (segment.getFlags() & ElfSegmentConstants.PF_R) != 0;
 	}
 
 	/**
 	 * Get the execute permission for the specified segment.
-	 * @param segment program header object
-	 * @return true if execute enabled, else false or null to use standard Elf program header
+	 * @param segment segment object
+	 * @return true if execute enabled, else false or null to use standard Elf segment
 	 * flags to make the determination.
 	 */
-	public Boolean isSegmentExecutable(ElfProgramHeader segment) {
-		return (segment.getFlags() & ElfProgramHeaderConstants.PF_X) != 0;
+	public Boolean isSegmentExecutable(ElfSegment segment) {
+		return (segment.getFlags() & ElfSegmentConstants.PF_X) != 0;
 	}
 
 	/**
@@ -414,23 +414,23 @@ public class ElfLoadAdapter {
 	}
 
 	/**
-	 * Return the memory bytes to be loaded from the underlying file for the specified program header.
+	 * Return the memory bytes to be loaded from the underlying file for the specified segment.
 	 * The returned value will be consistent with any byte filtering which may be required.
-	 * @param elfProgramHeader
-	 * @return preferred memory block size in bytes which corresponds to the specified program header
+	 * @param elfSegment
+	 * @return preferred memory block size in bytes which corresponds to the specified segment
 	 */
-	public long getAdjustedLoadSize(ElfProgramHeader elfProgramHeader) {
-		return elfProgramHeader.getFileSize();
+	public long getAdjustedLoadSize(ElfSegment elfSegment) {
+		return elfSegment.getFileSize();
 	}
 
 	/**
-	 * Return the memory segment size in bytes for the specified program header.
+	 * Return the memory segment size in bytes for the specified segment.
 	 * The returned value will be consistent with any byte filtering which may be required.
-	 * @param elfProgramHeader
-	 * @return preferred memory block size in bytes which corresponds to the specified program header
+	 * @param elfSegment
+	 * @return preferred memory block size in bytes which corresponds to the specified segment
 	 */
-	public long getAdjustedMemorySize(ElfProgramHeader elfProgramHeader) {
-		return elfProgramHeader.getMemorySize();
+	public long getAdjustedMemorySize(ElfSegment elfSegment) {
+		return elfSegment.getMemorySize();
 	}
 
 	/**
@@ -477,7 +477,7 @@ public class ElfLoadAdapter {
 	 * NOTE: If this method is overriden, the {@link #hasFilteredLoadInputStream(ElfLoadHelper, MemoryLoadable, Address)}
 	 * must also be overriden in a consistent fashion.
 	 * @param elfLoadHelper
-	 * @param loadable Corresponding ElfSectionHeader or ElfProgramHeader for the memory block to be created.
+	 * @param loadable Corresponding ElfSectionHeader or ElfSegment for the memory block to be created.
 	 * @param start memory load address
 	 * @param dataLength the in-memory data length in bytes (actual bytes read from dataInput may be more)
 	 * @param dataInput the source input stream
@@ -493,7 +493,7 @@ public class ElfLoadAdapter {
 	 * is required when loading a memory block.  If a filtered input stream is required this will prevent the use of a direct 
 	 * mapping to file bytes.
 	 * @param elfLoadHelper 
-	 * @param loadable Corresponding ElfSectionHeader or ElfProgramHeader for the memory block to be loaded.
+	 * @param loadable Corresponding ElfSectionHeader or ElfSegment for the memory block to be loaded.
 	 * @param start memory load address
 	 * @return true if the use of a filtered input stream is required
 	 */

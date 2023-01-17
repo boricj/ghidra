@@ -289,7 +289,7 @@ public class PowerPC_ElfExtension extends ElfExtension {
 			}
 		}
 		else {
-			for (ElfProgramHeader segment : elf.getProgramHeaders(e -> e.getType() == ElfProgramHeaderConstants.PT_LOAD)) {
+			for (ElfSegment segment : elf.getSegments(e -> e.getType() == ElfSegmentConstants.PT_LOAD)) {
 				monitor.checkCanceled();
 				if ((segment.getFlags() & PF_PPC_VLE) == 0) {
 					continue;

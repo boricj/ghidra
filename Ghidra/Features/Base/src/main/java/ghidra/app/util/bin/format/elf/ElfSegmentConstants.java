@@ -15,9 +15,9 @@
  */
 package ghidra.app.util.bin.format.elf;
 
-public class ElfProgramHeaderConstants {
+public class ElfSegmentConstants {
 
-	private ElfProgramHeaderConstants() {
+	private ElfSegmentConstants() {
 	}
 
 	////////////////////////////////////////////////////////////////////////////////

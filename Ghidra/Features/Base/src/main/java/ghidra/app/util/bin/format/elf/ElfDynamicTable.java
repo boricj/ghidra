@@ -26,7 +26,7 @@ import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.NotFoundException;
 
 /**
- * If an object file participates in dynamic linking, its program header table 
+ * If an object file participates in dynamic linking, its segment table 
  * will have an element of type PT_DYNAMIC. This "segment" contains the ".dynamic" section. 
  * A special symbol, _DYNAMIC, labels the section, which contains an array of the 
  * Elf32_Dyn or Elf64_Dyn structures.
