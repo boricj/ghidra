@@ -137,7 +137,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 			// resolve segment/sections and create program memory blocks
 			resolve(monitor);
 
-			if (elf.getSectionCount() == 0) {
+			if (elf.getSections().size() == 0) {
 				// create/expand segments to their fullsize if no sections are defined
 				expandProgramHeaderBlocks(monitor);
 			}
@@ -250,11 +250,11 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		// Ignore header regions which will always be allocated to blocks
 		int elfHeaderSize = elf.toDataType().getLength();
 		fileMap.paintRange(0, elfHeaderSize - 1, -4); // -4: header block
-		int programHeaderSize = elf.e_phentsize() * elf.getSegmentCount();
+		int programHeaderSize = elf.e_phentsize() * elf.getSegments().size();
 		if (programHeaderSize != 0) {
 			fileMap.paintRange(elf.e_phoff(), elf.e_phoff() + programHeaderSize - 1, -4); // -4: header block
 		}
-		int sectionHeaderSize = elf.e_shentsize() * elf.getSectionCount();
+		int sectionHeaderSize = elf.e_shentsize() * elf.getSections().size();
 		if (sectionHeaderSize != 0) {
 			fileMap.paintRange(elf.e_shoff(), elf.e_shoff() + sectionHeaderSize - 1, -4); // -4: header block
 		}
@@ -321,7 +321,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private boolean isDiscardableFillerSegment(MemoryLoadable loadable, String blockName,
 			Address start, long fileOffset, long length) throws IOException {
-		if (elf.getSectionCount() == 0 || elf.getSegmentCount() == 0) {
+		if (elf.getSections().size() == 0 || elf.getSegments().size() == 0) {
 			return false; // only prune if both sections and program headers are present
 		}
 		if (length > DISCARDABLE_SEGMENT_SIZE || !blockName.startsWith(SEGMENT_NAME_PREFIX)) {
@@ -1066,7 +1066,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private void markupProgramHeaders(TaskMonitor monitor) {
 
-		int headerCount = elf.getSegmentCount();
+		int headerCount = elf.getSegments().size();
 		int size = elf.e_phentsize() * headerCount;
 		if (size == 0) {
 			return;
@@ -1134,7 +1134,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private void markupSectionHeaders(TaskMonitor monitor) {
 
-		int headerCount = elf.getSectionCount();
+		int headerCount = elf.getSections().size();
 		int size = elf.e_shentsize() * headerCount;
 		if (size == 0) {
 			return;
@@ -3032,9 +3032,9 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private void processProgramHeaders(TaskMonitor monitor) throws CancelledException {
 
-		if (elf.isRelocatable() && elf.getSegmentCount() != 0) {
+		if (elf.isRelocatable() && elf.getSegments().size() != 0) {
 			log("Ignoring unexpected program headers for relocatable ELF (e_phnum=" +
-				elf.getSegmentCount() + ")");
+				elf.getSegments().size() + ")");
 			return;
 		}
 
@@ -3107,7 +3107,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		long loadSizeBytes = elfProgramHeader.getAdjustedLoadSize();
 		long fullSizeBytes = elfProgramHeader.getAdjustedMemorySize();
 
-		boolean maintainExecuteBit = elf.getSectionCount() == 0;
+		boolean maintainExecuteBit = elf.getSections().size() == 0;
 
 		if (fullSizeBytes <= 0) {
 			if (!space.isLoadedMemorySpace() && loadSizeBytes > 0) {
@@ -3128,7 +3128,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 		try {
 			// Only allow segment fragmentation if section headers are defined
-			boolean isFragmentationOK = (elf.getSectionCount() != 0);
+			boolean isFragmentationOK = (elf.getSections().size() != 0);
 
 			String comment = getSectionComment(addr, fullSizeBytes, space.getAddressableUnitSize(),
 				elfProgramHeader.getDescription(), address.isLoadedMemoryAddress());

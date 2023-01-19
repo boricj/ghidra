@@ -214,7 +214,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 	private void processProgramHeaders(ElfHeader elf, Listing listing) throws Exception {
 
-		int headerCount = elf.getSegmentCount();
+		int headerCount = elf.getSegments().size();
 		int size = elf.e_phentsize() * headerCount;
 		if (size == 0) {
 			return;

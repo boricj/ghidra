@@ -278,7 +278,7 @@ public class PowerPC_ElfExtension extends ElfExtension {
 		RegisterValue enableVLE = new RegisterValue(vleContextReg, BigInteger.ONE);
 
 		ElfHeader elf = elfLoadHelper.getElfHeader();
-		if (elf.getSectionCount() != 0) {
+		if (elf.getSections().size() != 0) {
 			// Rely on section headers if present
 			for (ElfSection section : elf.getSections(e -> e.getType() == ElfSectionConstants.SHT_PROGBITS)) {
 				monitor.checkCanceled();

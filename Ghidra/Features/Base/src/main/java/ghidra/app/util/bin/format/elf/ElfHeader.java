@@ -1217,18 +1217,6 @@ public class ElfHeader implements StructConverter, Writeable {
 	}
 
 	/**
-	 * This member holds the number of entries in the segment table. Thus the product
-	 * of e_phentsize and unsigned e_phnum gives the table's size in bytes. If original 
-	 * e_phnum equals PNXNUM (0xffff) an attempt will be made to obtained the extended size
-	 * from section[0].sh_info field.  If a file has no segment table, e_phnum holds 
-	 * the value zero.
-	 * @return the number of entries in the segment table
-	 */
-	public int getSegmentCount() {
-		return e_phnum;
-	}
-
-	/**
 	 * This member holds the segment table's file offset in bytes. If the file has no
 	 * segment table, this member holds zero.
 	 * @return the segment table's file offset in bytes
@@ -1244,16 +1232,6 @@ public class ElfHeader implements StructConverter, Writeable {
 	 */
 	public short e_shentsize() {
 		return e_shentsize;
-	}
-
-	/**
-	 * This member holds the number of entries in the section table. Thus the product
-	 * of e_shentsize and unsigned e_shnum gives the section table's size in bytes. If a file
-	 * has no section table, e_shnum holds the value zero.
-	 * @return the number of entries in the section table
-	 */
-	public int getSectionCount() {
-		return e_shnum;
 	}
 
 	/**
