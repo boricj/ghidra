@@ -95,7 +95,7 @@ public class ElfSymbol implements ByteArrayConverter {
 	/**Not preemptible, not exported*/
 	public static final byte STV_PROTECTED = 3;
 
-	private ElfHeader header;
+	private ElfFile elf;
 	private ElfSymbolTable symbolTable;
 	private int symbolTableIndex;
 
@@ -109,50 +109,18 @@ public class ElfSymbol implements ByteArrayConverter {
 	private String nameAsString;
 
 	/**
-	 * Creates a new section symbol.
-	 * @param header the corresponding ELF header
-	 * @param sectionAddress the start address of the section
-	 * @param sectionHeaderIndex the index of the section in the section table
-	 * @param name the string name of the section
-	 * @param symbolIndex index of symbol within corresponding symbol table
-	 * @param symbolTable symbol table
-	 * @return the new section symbol
-	 */
-	public static ElfSymbol createSectionSymbol32(ElfHeader header, long sectionAddress,
-			short sectionHeaderIndex, String name, int symbolIndex, ElfSymbolTable symbolTable) {
-		return new ElfSymbol(header, name, 0, sectionAddress, 0, STT_SECTION, (byte) 0,
-			sectionHeaderIndex, symbolIndex, symbolTable);
-	}
-
-	/**
-	 * Creates a new global function symbol.
-	 * @param header the corresponding ELF header
-	 * @param name the byte index of the name
-	 * @param nameAsString the string name of the section
-	 * @param addr the address of the function
-	 * @param symbolIndex index of symbol within corresponding symbol table
-	 * @param symbolTable symbol table
-	 * @return the new global function symbol
-	 */
-	public static ElfSymbol createGlobalFunctionSymbol(ElfHeader header, int name,
-			String nameAsString, long addr, int symbolIndex, ElfSymbolTable symbolTable) {
-		return new ElfSymbol(header, nameAsString, name, addr, 0,
-			(byte) ((STB_GLOBAL << 4) | STT_FUNC), (byte) 0, (short) 0, symbolIndex, symbolTable);
-	}
-
-	/**
 	 * Creates a new special null symbol which corresponds to symbol index 0.
-	 * @param header the corresponding ELF header
+	 * @param elf the corresponding ELF file
 	 * @return the new null symbol
 	 */
-	public static ElfSymbol createNullSymbol(ElfHeader header) {
-		return new ElfSymbol(header, "", 0, 0, 0, (byte) 0, (byte) 0, (short) 0, 0, null);
+	public static ElfSymbol createNullSymbol(ElfFile elf) {
+		return new ElfSymbol(elf, "", 0, 0, 0, (byte) 0, (byte) 0, (short) 0, 0, null);
 	}
 
-	private ElfSymbol(ElfHeader header, String nameAsString, int name, long value, long size,
+	private ElfSymbol(ElfFile elf, String nameAsString, int name, long value, long size,
 			byte info, byte other, short sectionHeaderIndex, int symbolIndex,
 			ElfSymbolTable symbolTable) {
-		this.header = header;
+		this.elf = elf;
 		this.nameAsString = nameAsString;
 
 		this.st_name = name;
@@ -170,19 +138,19 @@ public class ElfSymbol implements ByteArrayConverter {
 	 * Construct a normal ElfSymbol.
 	 * Warning! the routine initSymbolName() must be called on the symbol later
 	 * to initialize the string name.  This is a performance enhancement.
+	 * @param elf elf file
 	 * @param reader to read symbol from
 	 * @param symbolIndex index of the symbol to read
 	 * @param symbolTable symbol table to associate the symbol to
-	 * @param header else header
 	 * @throws IOException if an issue with reading occurs
 	 */
-	public ElfSymbol(BinaryReader reader, int symbolIndex,
-			ElfSymbolTable symbolTable, ElfHeader header) throws IOException {
-		this.header = header;
+	public ElfSymbol(ElfFile elf, BinaryReader reader,
+			int symbolIndex, ElfSymbolTable symbolTable) throws IOException {
+		this.elf = elf;
 		this.symbolTable = symbolTable;
 		this.symbolTableIndex = symbolIndex;
 
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			st_name = reader.readNextInt();
 			st_value = Integer.toUnsignedLong(reader.readNextInt());
 			st_size = Integer.toUnsignedLong(reader.readNextInt());
@@ -201,7 +169,7 @@ public class ElfSymbol implements ByteArrayConverter {
 
 		if (st_name == 0) {
 			if (getType() == STT_SECTION) {
-				List<ElfSection> sections = header.getSections();
+				List<ElfSection> sections = elf.getSections();
 				// FIXME: handle extended section indexing
 				int uSectionIndex = Short.toUnsignedInt(st_shndx);
 				if (Short.compareUnsigned(st_shndx, ElfSectionConstants.SHN_LORESERVE) < 0 &&
@@ -559,7 +527,7 @@ public class ElfSymbol implements ByteArrayConverter {
 	@Override
 	public byte[] toBytes(DataConverter dc) {
 		// FIXME! BUG!! Symbols can exist without a dynamic table !!
-		ElfDynamicTable dynamic = header.getDynamicTable();
+		ElfDynamicTable dynamic = elf.getDynamicTable();
 		int syment = 0;
 		try {
 			syment = (int) dynamic.getDynamicValue(ElfDynamicType.DT_SYMENT);
@@ -571,7 +539,7 @@ public class ElfSymbol implements ByteArrayConverter {
 		int index = 0;
 		dc.putInt(bytes, 0, st_name);
 		index += 4;
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			dc.putInt(bytes, index, (int) st_value);
 			index += 4;
 			dc.putInt(bytes, index, (int) st_size);

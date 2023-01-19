@@ -15,18 +15,21 @@
  */
 package ghidra.app.util.bin.format.elf;
 
-import java.util.HashMap;
-import java.util.function.Predicate;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
+import java.util.function.Predicate;
 
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteProvider;
-import ghidra.app.util.bin.ByteProviderWrapper;
 import ghidra.app.util.bin.StructConverter;
 import ghidra.app.util.bin.UnlimitedByteProviderWrapper;
 import ghidra.app.util.bin.format.Writeable;
-import ghidra.program.model.data.*;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DWordDataType;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.util.DataConverter;
 import ghidra.util.StringUtilities;
 
@@ -70,7 +73,7 @@ import ghidra.util.StringUtilities;
 public class ElfSegment
 		implements ElfFileSection, StructConverter, Comparable<ElfSegment>, Writeable {
 
-	protected ElfHeader header;
+	protected ElfFile elf;
 
 	private int p_type;
 	private int p_flags;
@@ -83,11 +86,11 @@ public class ElfSegment
 
 	private BinaryReader reader;
 
-	public ElfSegment(BinaryReader reader, ElfHeader header)
+	public ElfSegment(ElfFile elf, BinaryReader reader)
 			throws IOException {
-		this.header = header;
+		this.elf = elf;
 
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			p_type = reader.readNextInt();
 			p_offset = Integer.toUnsignedLong(reader.readNextInt());
 			p_vaddr = Integer.toUnsignedLong(reader.readNextInt());
@@ -97,7 +100,7 @@ public class ElfSegment
 			p_flags = reader.readNextInt();
 			p_align = Integer.toUnsignedLong(reader.readNextInt());
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			p_type = reader.readNextInt();
 			p_flags = reader.readNextInt();
 			p_offset = reader.readNextLong();
@@ -136,35 +139,11 @@ public class ElfSegment
 	}
 
 	/**
-	 * Constructs a new segment with the specified type.
-	 * @param header ELF header
-	 * @param type the new type of the segment
-	 */
-	public ElfSegment(ElfHeader header, int type) {
-		this.header = header;
-
-		p_type = type;
-		p_flags = ElfSegmentConstants.PF_R | ElfSegmentConstants.PF_W |
-			ElfSegmentConstants.PF_X;
-		p_align = 0x1000;
-		p_paddr = 0xffffffff;
-		p_vaddr = 0xffffffff;
-	}
-
-	/**
-	 * Return ElfHeader associated with this segment
-	 * @return ElfHeader
-	 */
-	public ElfHeader getElfHeader() {
-		return header;
-	}
-
-	/**
 	 * @see ghidra.app.util.bin.format.Writeable#write(java.io.RandomAccessFile, ghidra.util.DataConverter)
 	 */
 	@Override
 	public void write(RandomAccessFile raf, DataConverter dc) throws IOException {
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			raf.write(dc.getBytes(p_type));
 			raf.write(dc.getBytes((int) p_offset));
 			raf.write(dc.getBytes((int) p_vaddr));
@@ -174,7 +153,7 @@ public class ElfSegment
 			raf.write(dc.getBytes(p_flags));
 			raf.write(dc.getBytes((int) p_align));
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			raf.write(dc.getBytes(p_flags));
 			raf.write(dc.getBytes(p_type));
 			raf.write(dc.getBytes(p_offset));
@@ -192,7 +171,7 @@ public class ElfSegment
 	 * @return header type as string
 	 */
 	public String getTypeAsString() {
-		ElfSegmentType programHeaderType = header.getSegmentType(p_type);
+		ElfSegmentType programHeaderType = elf.getSegmentType(p_type);
 		if (programHeaderType != null) {
 			return programHeaderType.name;
 		}
@@ -209,7 +188,7 @@ public class ElfSegment
 	 * @return header description
 	 */
 	public String getDescription() {
-		ElfSegmentType programHeaderType = header.getSegmentType(p_type);
+		ElfSegmentType programHeaderType = elf.getSegmentType(p_type);
 		if (programHeaderType != null) {
 			String description = programHeaderType.description;
 			if (description != null && description.length() != 0) {
@@ -268,7 +247,7 @@ public class ElfSegment
 	 * @return true if this segment is readable when loaded
 	 */
 	public boolean isRead() {
-		return header.getLoadAdapter().isSegmentReadable(this);
+		return elf.getLoadAdapter().isSegmentReadable(this);
 	}
 
 	/**
@@ -276,7 +255,7 @@ public class ElfSegment
 	 * @return true if this segment is writable when loaded
 	 */
 	public boolean isWrite() {
-		return header.getLoadAdapter().isSegmentWritable(this);
+		return elf.getLoadAdapter().isSegmentWritable(this);
 	}
 
 	/**
@@ -284,7 +263,7 @@ public class ElfSegment
 	 * @return true if this segment is executable when loaded
 	 */
 	public boolean isExecute() {
-		return header.getLoadAdapter().isSegmentExecutable(this);
+		return elf.getLoadAdapter().isSegmentExecutable(this);
 	}
 
 	/**
@@ -303,7 +282,7 @@ public class ElfSegment
 	 * @return the number of bytes in the resulting memory block
 	 */
 	public long getAdjustedMemorySize() {
-		return header.getLoadAdapter().getAdjustedMemorySize(this);
+		return elf.getLoadAdapter().getAdjustedMemorySize(this);
 	}
 
 	/**
@@ -314,7 +293,7 @@ public class ElfSegment
 	 * @return the number of bytes to be loaded into the resulting memory block
 	 */
 	public long getAdjustedLoadSize() {
-		return header.getLoadAdapter().getAdjustedLoadSize(this);
+		return elf.getLoadAdapter().getAdjustedLoadSize(this);
 	}
 
 	/**
@@ -340,7 +319,7 @@ public class ElfSegment
 	 * @return true if this segment's offset is invalid
 	 */
 	public boolean isInvalidOffset() {
-		return p_offset < 0 || (header.is32Bit() && p_offset == ElfConstants.ELF32_INVALID_OFFSET);
+		return p_offset < 0 || (elf.is32Bit() && p_offset == ElfConstants.ELF32_INVALID_OFFSET);
 	}
 
 	/**
@@ -396,7 +375,7 @@ public class ElfSegment
 	 * @return the segment's physical address
 	 */
 	public long getPhysicalAddress() {
-		return header.adjustAddressForPrelink(p_paddr);
+		return elf.adjustAddressForPrelink(p_paddr);
 	}
 
 	/**
@@ -414,7 +393,7 @@ public class ElfSegment
 	 * @return the virtual address
 	 */
 	public long getVirtualAddress() {
-		return header.adjustAddressForPrelink(p_vaddr);
+		return elf.adjustAddressForPrelink(p_vaddr);
 	}
 
 	/**
@@ -422,9 +401,9 @@ public class ElfSegment
 	 */
 	@Override
 	public DataType toDataType() {
-		String dtName = header.is32Bit() ? "Elf32_Phdr" : "Elf64_Phdr";
+		String dtName = elf.is32Bit() ? "Elf32_Phdr" : "Elf64_Phdr";
 		StructureDataType struct = new StructureDataType(new CategoryPath("/ELF"), dtName, 0);
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			struct.add(getTypeDataType(), "p_type", null);
 			struct.add(DWORD, "p_offset", null);
 			struct.add(DWORD, "p_vaddr", null);
@@ -449,15 +428,15 @@ public class ElfSegment
 
 	private DataType getTypeDataType() {
 
-		HashMap<Integer, ElfSegmentType> programHeaderTypeMap =
-			header.getSegmentTypeMap();
+		Map<Integer, ElfSegmentType> programHeaderTypeMap =
+			elf.getSegmentTypeMap();
 		if (programHeaderTypeMap == null) {
 			return DWordDataType.dataType;
 		}
 
 		String dtName = "Elf_SegmentType";
 
-		String typeSuffix = header.getTypeSuffix();
+		String typeSuffix = elf.getTypeSuffix();
 		if (typeSuffix != null) {
 			dtName = dtName + typeSuffix;
 		}
@@ -475,8 +454,8 @@ public class ElfSegment
 	 * @param vaddr the new virtual address
 	 */
 	public void setAddress(long paddr, long vaddr) {
-		this.p_paddr = header.unadjustAddressForPrelink(paddr);
-		this.p_vaddr = header.unadjustAddressForPrelink(vaddr);
+		this.p_paddr = elf.unadjustAddressForPrelink(paddr);
+		this.p_vaddr = elf.unadjustAddressForPrelink(vaddr);
 	}
 
 	/**

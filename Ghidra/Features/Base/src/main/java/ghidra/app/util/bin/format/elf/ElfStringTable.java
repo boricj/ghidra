@@ -24,18 +24,18 @@ import ghidra.util.exception.DuplicateNameException;
 
 public class ElfStringTable implements StructConverter {
 
-	private ElfHeader header;
+	private ElfFile elf;
 
 	private ElfFileSection fileSection;
 	private BinaryReader reader;
 
 	/**
 	 * Construct and parse an Elf string table
-	 * @param header elf header
+	 * @param elf elf file
 	 * @param fileSection string table file section
 	 */
-	public ElfStringTable(ElfHeader header, ElfFileSection fileSection) {
-		this.header = header;
+	public ElfStringTable(ElfFile elf, ElfFileSection fileSection) {
+		this.elf = elf;
 		this.fileSection = fileSection;
 		this.reader = fileSection.getReader();
 	}
@@ -53,7 +53,7 @@ public class ElfStringTable implements StructConverter {
 			return reader.readUtf8String(stringOffset).trim();
 		}
 		catch (IOException e) {
-			header.logError(
+			elf.logError(
 				"Failed to read Elf String at offset 0x" + Long.toHexString(stringOffset) +
 					" within String Table at offset 0x" + Long.toHexString(fileSection.getFileOffset()));
 		}

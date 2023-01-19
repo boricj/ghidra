@@ -25,22 +25,24 @@ import ghidra.util.exception.NotFoundException;
 public class SPARC_ElfRelocationHandler extends ElfRelocationHandler {
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_SPARC ||
-			elf.e_machine() == ElfConstants.EM_SPARC32PLUS ||
-			elf.e_machine() == ElfConstants.EM_SPARCV9;
+	public boolean canRelocate(ElfFile elf) {
+		ElfHeader elfHeader = elf.getHeader();
+		return elfHeader.e_machine() == ElfConstants.EM_SPARC ||
+			elfHeader.e_machine() == ElfConstants.EM_SPARC32PLUS ||
+			elfHeader.e_machine() == ElfConstants.EM_SPARCV9;
 	}
 
 	@Override
 	public void relocate(ElfRelocationContext elfRelocationContext, ElfRelocation relocation,
 			Address relocationAddress) throws MemoryAccessException, NotFoundException {
 
-		ElfHeader elf = elfRelocationContext.getElfHeader();
-		if (elf.e_machine() != ElfConstants.EM_SPARC &&
-			elf.e_machine() != ElfConstants.EM_SPARC32PLUS) {
+		ElfHeader elfHeader = elfRelocationContext.getElfHeader();
+		if (elfHeader.e_machine() != ElfConstants.EM_SPARC &&
+			elfHeader.e_machine() != ElfConstants.EM_SPARC32PLUS) {
 			return;
 		}
 
+		ElfFile elf = elfRelocationContext.getElfFile();
 		Program program = elfRelocationContext.getProgram();
 		Memory memory = program.getMemory();
 

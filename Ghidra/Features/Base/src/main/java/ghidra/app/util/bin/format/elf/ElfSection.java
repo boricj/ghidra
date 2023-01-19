@@ -15,21 +15,24 @@
  */
 package ghidra.app.util.bin.format.elf;
 
-import java.util.HashMap;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
-import java.io.*;
 
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.bin.ByteProvider;
-import ghidra.app.util.bin.ByteProviderWrapper;
 import ghidra.app.util.bin.StructConverter;
 import ghidra.app.util.bin.UnlimitedByteProviderWrapper;
 import ghidra.app.util.bin.format.Writeable;
-import ghidra.program.model.data.*;
-import ghidra.program.model.mem.MemoryAccessException;
-import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DWordDataType;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.util.DataConverter;
 import ghidra.util.StringUtilities;
 
@@ -89,26 +92,26 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 
 	private BinaryReader reader;
 
-	private ElfHeader header;
+	private ElfFile elf;
 	private String name;
 	private byte[] data;
 	private boolean modified = false;
 	private boolean bytesChanged = false;
 
-	public ElfSection(BinaryReader reader, ElfHeader header)
+	public ElfSection(ElfFile elf, BinaryReader reader)
 			throws IOException {
-		this.header = header;
+		this.elf = elf;
 
 		sh_name = reader.readNextInt();
 		sh_type = reader.readNextInt();
 
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			sh_flags = Integer.toUnsignedLong(reader.readNextInt());
 			sh_addr = Integer.toUnsignedLong(reader.readNextInt());
 			sh_offset = Integer.toUnsignedLong(reader.readNextInt());
 			sh_size = Integer.toUnsignedLong(reader.readNextInt());
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			sh_flags = reader.readNextLong();
 			sh_addr = reader.readNextLong();
 			sh_offset = reader.readNextLong();
@@ -118,11 +121,11 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 		sh_link = reader.readNextInt();
 		sh_info = reader.readNextInt();
 
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			sh_addralign = Integer.toUnsignedLong(reader.readNextInt());
 			sh_entsize = Integer.toUnsignedLong(reader.readNextInt());
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			sh_addralign = reader.readNextLong();
 			sh_entsize = reader.readNextLong();
 		}
@@ -141,64 +144,6 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 		this.reader = new BinaryReader(provider, reader.isLittleEndian());
 	}
 
-	ElfSection(ElfHeader header, MemoryBlock block, int sh_name, long imageBase)
-			throws MemoryAccessException {
-
-		this.header = header;
-		this.sh_name = sh_name;
-
-		if (block.isInitialized()) {
-			sh_type = ElfSectionConstants.SHT_PROGBITS;
-		}
-		else {
-			sh_type = ElfSectionConstants.SHT_NOBITS;
-		}
-		sh_flags = ElfSectionConstants.SHF_ALLOC | ElfSectionConstants.SHF_WRITE |
-			ElfSectionConstants.SHF_EXECINSTR;
-		sh_addr = block.getStart().getOffset();
-		sh_offset = block.getStart().getAddressableWordOffset() - imageBase;
-		sh_size = block.getSize();
-		sh_link = 0;
-		sh_info = 0;
-		sh_addralign = 0;
-		sh_entsize = 0;
-		name = block.getName();
-
-		data = new byte[(int) sh_size];
-		if (block.isInitialized()) {
-			block.getBytes(block.getStart(), data);
-		}
-
-		modified = true;
-	}
-
-	ElfSection(ElfHeader header, String name, int sh_name, int type) {
-		this.header = header;
-		this.name = name;
-		this.sh_name = sh_name;
-		this.sh_type = type;
-
-		sh_flags = ElfSectionConstants.SHF_ALLOC | ElfSectionConstants.SHF_WRITE |
-			ElfSectionConstants.SHF_EXECINSTR;
-		sh_link = 0;
-		sh_info = 0;
-		sh_addralign = 0;
-		sh_entsize = 0;
-
-		data = new byte[0];
-		sh_size = 0;
-		sh_addr = -1;
-		sh_offset = -1;
-	}
-
-	/**
-	 * Return ElfHeader associated with this section
-	 * @return ElfHeader
-	 */
-	public ElfHeader getElfHeader() {
-		return header;
-	}
-
 	/**
 	 * @see ghidra.app.util.bin.format.Writeable#write(java.io.RandomAccessFile, ghidra.util.DataConverter)
 	 */
@@ -207,13 +152,13 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 		raf.write(dc.getBytes(sh_name));
 		raf.write(dc.getBytes(sh_type));
 
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			raf.write(dc.getBytes((int) sh_flags));
 			raf.write(dc.getBytes((int) sh_addr));
 			raf.write(dc.getBytes((int) sh_offset));
 			raf.write(dc.getBytes((int) sh_size));
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			raf.write(dc.getBytes(sh_flags));
 			raf.write(dc.getBytes(sh_addr));
 			raf.write(dc.getBytes(sh_offset));
@@ -223,11 +168,11 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 		raf.write(dc.getBytes(sh_link));
 		raf.write(dc.getBytes(sh_info));
 
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			raf.write(dc.getBytes((int) sh_addralign));
 			raf.write(dc.getBytes((int) sh_entsize));
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			raf.write(dc.getBytes(sh_addralign));
 			raf.write(dc.getBytes(sh_entsize));
 		}
@@ -240,7 +185,7 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 * @return the address of the section in memory
 	 */
 	public long getVirtualAddress() {
-		return header.adjustAddressForPrelink(sh_addr);
+		return elf.adjustAddressForPrelink(sh_addr);
 	}
 
 	/**
@@ -280,7 +225,7 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 * @return true if this section is writable.
 	 */
 	public boolean isWritable() {
-		return header.getLoadAdapter().isSectionWritable(this);
+		return elf.getLoadAdapter().isSectionWritable(this);
 	}
 
 	/**
@@ -288,7 +233,7 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 * @return true if this section is executable.
 	 */
 	public boolean isExecutable() {
-		return header.getLoadAdapter().isSectionExecutable(this);
+		return elf.getLoadAdapter().isSectionExecutable(this);
 	}
 
 	/**
@@ -296,7 +241,7 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 * @return true if this section is allocated.
 	 */
 	public boolean isAlloc() {
-		return header.getLoadAdapter().isSectionAllocated(this);
+		return elf.getLoadAdapter().isSectionAllocated(this);
 	}
 
 	/**
@@ -345,30 +290,24 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	}
 
 	void updateName() {
-		List<ElfSection> sections = header.getSections();
-		int e_shstrndx = header.e_shstrndx();
+		List<ElfSection> sections = elf.getSections();
+		int e_shstrndx = elf.getSectionNameStringTableIndex();
 		name = null;
-		try {
-			if (sh_name >= 0 && e_shstrndx > 0 && e_shstrndx < sections.size()) {
-				ElfSection section = sections.get(e_shstrndx);
-				// read section name from string table
-				if (!section.isInvalidOffset()) {
-					BinaryReader reader = section.getReader();
-					if (sh_name < reader.length()) {
-						name = reader.readAsciiString(sh_name);
-						if ("".equals(name)) {
-							name = null;
-						}
-					}
-				}
+
+		if (sh_name >= 0 && e_shstrndx > 0 && e_shstrndx < sections.size()) {
+			ElfSection section = sections.get(e_shstrndx);
+			ElfStringTable stringTable = elf.getStringTable(section);
+			name = stringTable.readString(sh_name);
+			if ("".equals(name)) {
+				name = null;
 			}
 		}
-		catch (IOException e) {
-			// ignore
-		}
+
 		if (name == null) {
 			name = "NO-NAME";
-			for (int i = 0; i < sections.size(); ++i) {//find this section's index
+
+			//find this section's index
+			for (int i = 0; i < sections.size(); ++i) {
 				if (sections.get(i) == this) {
 					name = "SECTION" + i;
 					break;
@@ -416,7 +355,7 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 */
 	public boolean isInvalidOffset() {
 		return sh_offset < 0 ||
-			(header.is32Bit() && sh_offset == ElfConstants.ELF32_INVALID_OFFSET);
+			(elf.is32Bit() && sh_offset == ElfConstants.ELF32_INVALID_OFFSET);
 	}
 
 	/**
@@ -446,7 +385,7 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 * @return the number of bytes in the resulting memory block
 	 */
 	public long getAdjustedSize() {
-		return header.getLoadAdapter().getAdjustedSize(this);
+		return elf.getLoadAdapter().getAdjustedSize(this);
 	}
 
 	/**
@@ -463,7 +402,7 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 * @return header type as string
 	 */
 	public String getTypeAsString() {
-		ElfSectionType sectionHeaderType = header.getSectionType(sh_type);
+		ElfSectionType sectionHeaderType = elf.getSectionType(sh_type);
 		if (sectionHeaderType != null) {
 			return sectionHeaderType.name;
 		}
@@ -570,11 +509,11 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 * @param addr the new start address of this section
 	 */
 	public void setAddress(long addr) {
-		if (!header.isRelocatable() && sh_addr == 0) {
+		if (!elf.isRelocatable() && sh_addr == 0) {
 			throw new RuntimeException(
 				"Attempting to place non-loaded section into memory :" + name);
 		}
-		this.sh_addr = header.unadjustAddressForPrelink(addr);
+		this.sh_addr = elf.unadjustAddressForPrelink(addr);
 	}
 
 	/**
@@ -590,17 +529,17 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	 */
 	@Override
 	public DataType toDataType() {
-		String dtName = header.is32Bit() ? "Elf32_Shdr" : "Elf64_Shdr";
+		String dtName = elf.is32Bit() ? "Elf32_Shdr" : "Elf64_Shdr";
 		StructureDataType struct = new StructureDataType(new CategoryPath("/ELF"), dtName, 0);
 		struct.add(DWORD, "sh_name", null);
 		struct.add(getTypeDataType(), "sh_type", null);
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			struct.add(DWORD, "sh_flags", null);
 			struct.add(DWORD, "sh_addr", null);
 			struct.add(DWORD, "sh_offset", null);
 			struct.add(DWORD, "sh_size", null);
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			struct.add(QWORD, "sh_flags", null);
 			struct.add(QWORD, "sh_addr", null);
 			struct.add(QWORD, "sh_offset", null);
@@ -608,11 +547,11 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 		}
 		struct.add(DWORD, "sh_link", null);
 		struct.add(DWORD, "sh_info", null);
-		if (header.is32Bit()) {
+		if (elf.is32Bit()) {
 			struct.add(DWORD, "sh_addralign", null);
 			struct.add(DWORD, "sh_entsize", null);
 		}
-		else if (header.is64Bit()) {
+		else if (elf.is64Bit()) {
 			struct.add(QWORD, "sh_addralign", null);
 			struct.add(QWORD, "sh_entsize", null);
 		}
@@ -621,15 +560,15 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 
 	private DataType getTypeDataType() {
 
-		HashMap<Integer, ElfSectionType> sectionHeaderTypeMap =
-			header.getSectionTypeMap();
+		Map<Integer, ElfSectionType> sectionHeaderTypeMap =
+			elf.getSectionTypeMap();
 		if (sectionHeaderTypeMap == null) {
 			return DWordDataType.dataType;
 		}
 
 		String dtName = "Elf_SectionType";
 
-		String typeSuffix = header.getTypeSuffix();
+		String typeSuffix = elf.getTypeSuffix();
 		if (typeSuffix != null) {
 			dtName = dtName + typeSuffix;
 		}

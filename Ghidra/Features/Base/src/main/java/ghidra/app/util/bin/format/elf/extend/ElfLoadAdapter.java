@@ -226,14 +226,14 @@ public class ElfLoadAdapter {
 	}
 
 	/**
-	 * Check if this extension can handle the specified elf header.  If this method returns 
+	 * Check if this extension can handle the specified elf file.  If this method returns 
 	 * true, this extension will be used to obtain extended types definitions and to perform
 	 * additional load processing.
-	 * @param elf elf header
+	 * @param elf elf file
 	 * @return true if this extension should be used when loading the elf image which
 	 * corresponds to the specified header.
 	 */
-	public boolean canHandle(ElfHeader elf) {
+	public boolean canHandle(ElfFile elf) {
 		return false;
 	}
 
@@ -505,19 +505,19 @@ public class ElfLoadAdapter {
 	/**
 	 * Get the ElfRelocation class which should be used to properly parse
 	 * the relocation tables.
-	 * @param elfHeader ELF header object (for header field access only)
+	 * @param elf ELF file object (for header field access only)
 	 * @return ElfRelocation class or null for default behavior
 	 */
-	public Class<? extends ElfRelocation> getRelocationClass(ElfHeader elfHeader) {
+	public Class<? extends ElfRelocation> getRelocationClass(ElfFile elf) {
 		return null;
 	}
 
 	/**
 	 * Add extension-specific load options
-	 * @param elf ELF header
+	 * @param elf ELF file
 	 * @param options list to which load options may be added 
 	 */
-	public void addLoadOptions(ElfHeader elf, List<Option> options) {
+	public void addLoadOptions(ElfFile elf, List<Option> options) {
 		// no additional options
 	}
 

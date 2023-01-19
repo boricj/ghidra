@@ -56,7 +56,7 @@ public class ElfRelocationContext {
 		this.relocationTable = relocationTable;
 		symbolTable = relocationTable.getAssociatedSymbolTable();
 		if (symbolTable == null) {
-			nullSymbol = ElfSymbol.createNullSymbol(loadHelper.getElfHeader());
+			nullSymbol = ElfSymbol.createNullSymbol(loadHelper.getElfFile());
 		}
 		this.symbolMap = symbolMap;
 		this.program = loadHelper.getProgram();
@@ -136,7 +136,7 @@ public class ElfRelocationContext {
 	 */
 	public static ElfRelocationContext getRelocationContext(ElfLoadHelper loadHelper,
 			ElfRelocationTable relocationTable, Map<ElfSymbol, Address> symbolMap) {
-		ElfHeader elf = loadHelper.getElfHeader();
+		ElfFile elf = loadHelper.getElfFile();
 		ElfRelocationContext context = null;
 		ElfRelocationHandler handler = ElfRelocationHandlerFactory.getHandler(elf);
 		if (handler != null) {
@@ -181,6 +181,10 @@ public class ElfRelocationContext {
 		return program.getMemory().isBigEndian();
 	}
 
+	public final ElfFile getElfFile() {
+		return loadHelper.getElfFile();
+	}
+
 	public final ElfHeader getElfHeader() {
 		return loadHelper.getElfHeader();
 	}
@@ -190,7 +194,7 @@ public class ElfRelocationContext {
 	}
 
 	public final ElfLoadAdapter getLoadAdapter() {
-		return getElfHeader().getLoadAdapter();
+		return getElfFile().getLoadAdapter();
 	}
 
 	public final MessageLog getLog() {

@@ -25,8 +25,8 @@ import ghidra.util.exception.NotFoundException;
 public class X86_32_ElfRelocationHandler extends ElfRelocationHandler {
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_386;
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_386;
 	}
 
 	@Override
@@ -38,11 +38,12 @@ public class X86_32_ElfRelocationHandler extends ElfRelocationHandler {
 	public void relocate(ElfRelocationContext elfRelocationContext, ElfRelocation relocation,
 			Address relocationAddress) throws MemoryAccessException, NotFoundException {
 
-		ElfHeader elf = elfRelocationContext.getElfHeader();
-		if (elf.e_machine() != ElfConstants.EM_386) {
+		ElfHeader elfHeader = elfRelocationContext.getElfHeader();
+		if (elfHeader.e_machine() != ElfConstants.EM_386) {
 			return;
 		}
 
+		ElfFile elf = elfRelocationContext.getElfFile();
 		Program program = elfRelocationContext.getProgram();
 		Memory memory = program.getMemory();
 

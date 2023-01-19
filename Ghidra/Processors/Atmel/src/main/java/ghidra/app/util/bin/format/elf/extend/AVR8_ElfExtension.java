@@ -46,8 +46,8 @@ public class AVR8_ElfExtension extends ElfExtension {
 	public static final int E_AVR_MACH_XMEGA7 = 107;
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		if (elf.e_machine() != ElfConstants.EM_AVR) {
+	public boolean canHandle(ElfFile elf) {
+		if (elf.getHeader().e_machine() != ElfConstants.EM_AVR) {
 			return false;
 		}
 		// TODO: limit to specific architectures?
@@ -57,7 +57,7 @@ public class AVR8_ElfExtension extends ElfExtension {
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
-		return canHandle(elfLoadHelper.getElfHeader()) &&
+		return canHandle(elfLoadHelper.getElfFile()) &&
 			"AVR8".equals(language.getProcessor().toString());
 	}
 

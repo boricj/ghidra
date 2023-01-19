@@ -83,7 +83,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		ByteProvider provider =
 			MemoryByteProvider.createDefaultAddressSpaceByteProvider(program, false);
 		try {
-			ElfHeader elf = new ElfHeader(provider, msg -> messages.appendMsg(msg));
+			ElfFile elf = new ElfFile(provider, msg -> messages.appendMsg(msg));
 
 			processElfHeader(elf, listing);
 			processProgramHeaders(elf, listing);
@@ -127,15 +127,15 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		return messages;
 	}
 
-	private void processElfHeader(ElfHeader elf, Listing listing)
+	private void  processElfHeader(ElfFile elf, Listing listing)
 			throws DuplicateNameException, CodeUnitInsertionException, Exception {
-		DataType elfDT = elf.toDataType();
+		DataType elfDT = elf.getHeader().toDataType();
 		Address elfStart = addr(0);
 		createData(elfStart, elfDT);
 		createFragment(elfDT.getName(), elfStart, elfDT.getLength());
 	}
 
-	private void processStrings(ElfHeader elf) throws CancelledException {
+	private void  processStrings(ElfFile elf) throws CancelledException {
 
 		Memory memory = currentProgram.getMemory();
 
@@ -173,7 +173,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		}
 	}
 
-	private void processSectionHeaders(ElfHeader elf, Listing listing) throws Exception {
+	private void  processSectionHeaders(ElfFile elf, Listing listing) throws Exception {
 		List<ElfSection> sections = elf.getSections();
 		for (int i = 0; i < sections.size(); i++) {
 			ElfSection section = sections.get(i);
@@ -181,7 +181,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 			String name = section.getNameAsString();
 
 			DataType sectionDT = section.toDataType();
-			long offset = elf.e_shoff() + (i * elf.e_shentsize());
+			long offset = elf.getHeader().e_shoff() + (i * elf.getHeader().e_shentsize());
 			Address sectionStart = addr(offset);
 
 			createData(sectionStart, sectionDT);
@@ -212,10 +212,10 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		}
 	}
 
-	private void processProgramHeaders(ElfHeader elf, Listing listing) throws Exception {
+	private void  processProgramHeaders(ElfFile elf, Listing listing) throws Exception {
 
 		int headerCount = elf.getSegments().size();
-		int size = elf.e_phentsize() * headerCount;
+		int size = elf.getHeader().e_phentsize() * headerCount;
 		if (size == 0) {
 			return;
 		}
@@ -224,7 +224,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		phStructDt = phStructDt.clone(listing.getDataTypeManager());
 		Array arrayDt = new ArrayDataType(phStructDt, headerCount, size);
 
-		Data array = createData(addr(elf.e_phoff()), arrayDt);
+		Data array = createData(addr(elf.getHeader().e_phoff()), arrayDt);
 
 		createFragment(phStructDt.getName(), array.getMinAddress(), array.getLength());
 
@@ -241,7 +241,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		}
 	}
 
-	private void processInterpretor(ElfHeader elf, ByteProvider provider, Program program)
+	private void  processInterpretor(ElfFile elf, ByteProvider provider, Program program)
 			throws CancelledException {
 		for (ElfSegment programHeader : elf.getSegments(e -> e.getType() == ElfSegmentConstants.PT_INTERP)) {
 			monitor.checkCanceled();
@@ -262,7 +262,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		}
 	}
 
-	private void processDynamic(ElfHeader elf, ByteProvider provider, Program program)
+	private void  processDynamic(ElfFile elf, ByteProvider provider, Program program)
 			throws CancelledException {
 
 		ElfDynamicTable dynamicTable = elf.getDynamicTable();
@@ -321,7 +321,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		}
 	}
 
-	private void addDynamicStringComment(ElfHeader elf, ElfDynamic dynamic, Data data,
+	private void addDynamicStringComment(ElfFile elf, ElfDynamic dynamic, Data data,
 			BinaryReader reader, Program program) {
 		ElfStringTable dynamicStringTable = elf.getDynamicStringTable();
 		if (dynamicStringTable != null) {
@@ -332,7 +332,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		}
 	}
 
-	private void addDynamicReference(ElfHeader elf, ElfDynamic dynamic, Address fromAddr,
+	private void addDynamicReference(ElfFile elf, ElfDynamic dynamic, Address fromAddr,
 			Program program) {
 
 		long dynamicRefAddr = dynamic.getValue();
@@ -356,7 +356,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 
 	}
 
-	private void processSymbolTables(ElfHeader elf, Listing listing, SymbolTable symbolTable)
+	private void  processSymbolTables(ElfFile elf, Listing listing, SymbolTable symbolTable)
 			throws CancelledException {
 		monitor.setMessage("Processing symbol tables...");
 
@@ -404,7 +404,7 @@ public class ElfBinaryAnalysisCommand extends FlatProgramAPI
 		return currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(offset);
 	}
 
-	private void processRelocationTables(ElfHeader elf, Listing listing) throws CancelledException {
+	private void  processRelocationTables(ElfFile elf, Listing listing) throws CancelledException {
 		monitor.setMessage("Processing relocation tables...");
 		List<ElfRelocationTable> relocationTables = elf.getRelocationTables();
 		for (ElfRelocationTable relocationTable : relocationTables) {

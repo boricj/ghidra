@@ -25,8 +25,8 @@ import ghidra.util.exception.NotFoundException;
 public class AVR8_ElfRelocationHandler extends ElfRelocationHandler {
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_AVR;
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_AVR;
 	}
 
 	@Override

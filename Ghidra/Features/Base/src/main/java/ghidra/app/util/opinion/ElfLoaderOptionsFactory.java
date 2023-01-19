@@ -22,11 +22,16 @@ import ghidra.app.util.Option;
 import ghidra.app.util.OptionUtils;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.bin.format.elf.ElfException;
-import ghidra.app.util.bin.format.elf.ElfHeader;
+import ghidra.app.util.bin.format.elf.ElfFile;
 import ghidra.app.util.bin.format.elf.extend.ElfExtensionFactory;
 import ghidra.app.util.bin.format.elf.extend.ElfLoadAdapter;
-import ghidra.program.model.address.*;
-import ghidra.program.model.lang.*;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.address.AddressSpace;
+import ghidra.program.model.lang.GhidraLanguagePropertyKeys;
+import ghidra.program.model.lang.Language;
+import ghidra.program.model.lang.LanguageNotFoundException;
+import ghidra.program.model.lang.Register;
 import ghidra.util.NumericUtilities;
 import ghidra.util.StringUtilities;
 
@@ -59,7 +64,7 @@ public class ElfLoaderOptionsFactory {
 		options.add(new Option(PERFORM_RELOCATIONS_NAME, PERFORM_RELOCATIONS_DEFAULT, Boolean.class,
 			Loader.COMMAND_LINE_ARG_PREFIX + "-applyRelocations"));
 
-		ElfHeader elf = new ElfHeader(provider, null);
+		ElfFile elf = new ElfFile(provider, null);
 
 		long imageBase = elf.getImageBase();
 		if (imageBase == 0 && (elf.isRelocatable() || elf.isSharedObject())) {
@@ -90,7 +95,7 @@ public class ElfLoaderOptionsFactory {
 
 	}
 	
-	private static boolean includeDataImageBaseOption(ElfHeader elf, Language language) {
+	private static boolean includeDataImageBaseOption(ElfFile elf, Language language) {
 		// only include option if all segments and section have a 0 address
 		AddressSpace defaultSpace = language.getDefaultSpace();
 		AddressSpace defaultDataSpace = language.getDefaultDataSpace();
@@ -100,7 +105,7 @@ public class ElfLoaderOptionsFactory {
 		return elf.isRelocatable() && elf.getImageBase() == 0;
 	}
 	
-	private static long getRecommendedMinimumDataImageBase(ElfHeader elf, Language language) {
+	private static long getRecommendedMinimumDataImageBase(ElfFile elf, Language language) {
 		
 		String minDataOffset =
 			language.getProperty(GhidraLanguagePropertyKeys.MINIMUM_DATA_IMAGE_BASE);

@@ -86,15 +86,15 @@ public class PIC30_ElfExtension extends ElfExtension {
 	**/
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == EM_DSPIC30F;
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == EM_DSPIC30F;
 	}
 
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		// TODO: The PIC-30/24 utilize too many different processor names instead of
 		// variant names !!
-		return canHandle(elfLoadHelper.getElfHeader());
+		return canHandle(elfLoadHelper.getElfFile());
 	}
 
 	@Override

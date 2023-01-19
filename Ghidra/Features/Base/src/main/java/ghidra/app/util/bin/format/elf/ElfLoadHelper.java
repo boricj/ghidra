@@ -17,9 +17,13 @@ package ghidra.app.util.bin.format.elf;
 
 import ghidra.app.util.bin.format.MemoryLoadable;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.program.model.address.*;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressOverflowException;
+import ghidra.program.model.address.AddressRange;
 import ghidra.program.model.data.DataType;
-import ghidra.program.model.listing.*;
+import ghidra.program.model.listing.Data;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
@@ -47,10 +51,18 @@ public interface ElfLoadHelper {
 	<T> T getOption(String optionName, T defaultValue);
 
 	/**
+	 * Get ELF file object
+	 * @return ELF file object
+	 */
+	ElfFile getElfFile();
+
+	/**
 	 * Get ELF Header object
 	 * @return ELF Header object
 	 */
-	ElfHeader getElfHeader();
+	default ElfHeader getElfHeader() {
+		return getElfFile().getHeader();
+	}
 
 	/**
 	 * Get the message log
@@ -156,14 +168,14 @@ public interface ElfLoadHelper {
 	 * This method is responsible for applying any program image base change imposed during 
 	 * the import (see {@link #getImageBaseWordAdjustmentOffset()}.
 	 * @param addressableWordOffset absolute word offset.  The offset should already include
-	 * default image base and pre-link adjustment (see {@link ElfHeader#adjustAddressForPrelink(long)}).  
+	 * default image base and pre-link adjustment (see {@link ElfFile#adjustAddressForPrelink(long)}).  
 	 * @return memory address in default code space
 	 */
 	Address getDefaultAddress(long addressableWordOffset);
 
 	/**
 	 * Get the program image base offset adjustment.  The value returned reflects the
-	 * actual program image base minus the default image base (see {@link ElfHeader#getImageBase()}.
+	 * actual program image base minus the default image base (see {@link ElfFile#getImageBase()}.
 	 * This will generally be zero (0), unless the program image base differs from the
 	 * default.  It may be necessary to add this value to any pre-linked address values
 	 * such as those contained with the dynamic table. (Applies to default address space only)

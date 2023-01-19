@@ -15,20 +15,41 @@
  */
 package ghidra.app.util.bin.format.elf;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import ghidra.app.cmd.refs.RemoveReferenceCmd;
 import ghidra.app.util.PseudoDisassembler;
 import ghidra.program.disassemble.Disassembler;
-import ghidra.program.model.address.*;
-import ghidra.program.model.data.*;
-import ghidra.program.model.listing.*;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressSpace;
+import ghidra.program.model.data.MutabilitySettingsDefinition;
+import ghidra.program.model.data.Pointer;
+import ghidra.program.model.data.Pointer32DataType;
+import ghidra.program.model.data.Pointer64DataType;
+import ghidra.program.model.data.PointerDataType;
+import ghidra.program.model.data.Undefined;
+import ghidra.program.model.listing.BookmarkType;
+import ghidra.program.model.listing.Data;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
-import ghidra.program.model.symbol.*;
+import ghidra.program.model.symbol.Reference;
+import ghidra.program.model.symbol.SourceType;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.util.Msg;
-import ghidra.util.exception.*;
+import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.DuplicateNameException;
+import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
 /**
@@ -43,14 +64,14 @@ public class ElfDefaultGotPltMarkup {
 	private static final String PLT_HEAD_SYMBOL_NAME = "__PLT_HEAD";
 
 	private ElfLoadHelper elfLoadHelper;
-	private ElfHeader elf;
+	private ElfFile elf;
 	private Program program;
 	private Listing listing;
 	private Memory memory;
 
 	public ElfDefaultGotPltMarkup(ElfLoadHelper elfLoadHelper) {
 		this.elfLoadHelper = elfLoadHelper;
-		elf = elfLoadHelper.getElfHeader();
+		elf = elfLoadHelper.getElfFile();
 		program = elfLoadHelper.getProgram();
 		listing = program.getListing();
 		memory = program.getMemory();
@@ -449,7 +470,7 @@ public class ElfDefaultGotPltMarkup {
 		int skipPointers = assumedPltHeadSize;
 
 		// ARM, AARCH64 and others may not store pointers at start of .plt
-		if (elf.e_machine() == ElfConstants.EM_ARM || elf.e_machine() == ElfConstants.EM_AARCH64) {
+		if (elf.getHeader().e_machine() == ElfConstants.EM_ARM || elf.getHeader().e_machine() == ElfConstants.EM_AARCH64) {
 			skipPointers = 0; // disassemble entire PLT
 		}
 
@@ -636,7 +657,7 @@ public class ElfDefaultGotPltMarkup {
 	private Address UglyImageBaseCheck(Data data, Address imageBase) {
 		// TODO: Find sample - e.g., ARM .so - seems too late in import processing to change image base 
 		//       if any relocations have been applied.
-		if (elf.e_machine() != ElfConstants.EM_ARM) {
+		if (elf.getHeader().e_machine() != ElfConstants.EM_ARM) {
 			return null;
 		}
 		if (!elf.isSharedObject()) {

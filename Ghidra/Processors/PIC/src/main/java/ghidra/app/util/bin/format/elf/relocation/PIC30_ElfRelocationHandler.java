@@ -101,8 +101,8 @@ public class PIC30_ElfRelocationHandler extends ElfRelocationHandler {
 	private Boolean isEDSVariant = null;
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_DSPIC30F;
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_DSPIC30F;
 	}
 
 	@Override

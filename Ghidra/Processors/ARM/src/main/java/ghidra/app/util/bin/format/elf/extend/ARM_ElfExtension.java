@@ -62,14 +62,14 @@ public class ARM_ElfExtension extends ElfExtension {
 			"See Debugging Overlaid Programs (DBGOVL) for details");
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_ARM;
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_ARM;
 	}
 
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
-		return canHandle(elfLoadHelper.getElfHeader()) &&
+		return canHandle(elfLoadHelper.getElfFile()) &&
 			"ARM".equals(language.getProcessor().toString());
 	}
 
@@ -79,7 +79,7 @@ public class ARM_ElfExtension extends ElfExtension {
 	}
 
 	@Override
-	public void addLoadOptions(ElfHeader elf, List<Option> options) {
+	public void addLoadOptions(ElfFile elf, List<Option> options) {
 
 		// If PC Bias option disabled addend assumed to includes PC Bias,
 		// if enabled PC Bias must be factored in explicitly during relocation processing

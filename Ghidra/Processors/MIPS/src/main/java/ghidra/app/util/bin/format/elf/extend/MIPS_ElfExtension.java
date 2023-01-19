@@ -295,14 +295,14 @@ public class MIPS_ElfExtension extends ElfExtension {
 	public static final short SHN_MIPS_DATA = (short) 0xff02;
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_MIPS;
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_MIPS;
 	}
 
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
-		return canHandle(elfLoadHelper.getElfHeader()) &&
+		return canHandle(elfLoadHelper.getElfFile()) &&
 			"MIPS".equals(language.getProcessor().toString());
 	}
 
@@ -422,8 +422,8 @@ public class MIPS_ElfExtension extends ElfExtension {
 	private void updateNonRelocatebleGotEntries(ElfLoadHelper elfLoadHelper, ElfSymbol elfSymbol,
 			Address address) {
 
-		ElfHeader elfHeader = elfLoadHelper.getElfHeader();
-		if (elfHeader.isRelocatable() || !elfSymbol.getSymbolTable().isDynamic()) {
+		ElfFile elf = elfLoadHelper.getElfFile();
+		if (elf.isRelocatable() || !elfSymbol.getSymbolTable().isDynamic()) {
 			return;
 		}
 
@@ -432,7 +432,7 @@ public class MIPS_ElfExtension extends ElfExtension {
 			return;
 		}
 
-		ElfDynamicTable dynamicTable = elfHeader.getDynamicTable();
+		ElfDynamicTable dynamicTable = elf.getDynamicTable();
 		if (dynamicTable == null || !dynamicTable.containsDynamicValue(DT_MIPS_LOCAL_GOTNO) ||
 			!dynamicTable.containsDynamicValue(DT_MIPS_GOTSYM)) {
 			return;
@@ -479,10 +479,10 @@ public class MIPS_ElfExtension extends ElfExtension {
 
 	private void processMipsDyanmics(ElfLoadHelper elfLoadHelper, TaskMonitor monitor) {
 
-		ElfDynamicTable dynamicTable = elfLoadHelper.getElfHeader().getDynamicTable();
+		ElfDynamicTable dynamicTable = elfLoadHelper.getElfFile().getDynamicTable();
 		if (dynamicTable != null && dynamicTable.containsDynamicValue(DT_MIPS_GP_VALUE)) {
 			try {
-				ElfHeader elf = elfLoadHelper.getElfHeader();
+				ElfFile elf = elfLoadHelper.getElfFile();
 				long gpValue =
 					elf.adjustAddressForPrelink(dynamicTable.getDynamicValue(DT_MIPS_GP_VALUE));
 				Address gpAddr = elfLoadHelper.getDefaultAddress(gpValue);
@@ -496,7 +496,7 @@ public class MIPS_ElfExtension extends ElfExtension {
 	}
 
 	private void processMipsHeaders(ElfLoadHelper elfLoadHelper, TaskMonitor monitor) {
-		ElfHeader elf = elfLoadHelper.getElfHeader();
+		ElfFile elf = elfLoadHelper.getElfFile();
 
 		Address mipsOptionsAddr = null;
 		Address regInfoAddr = null;
@@ -739,9 +739,9 @@ public class MIPS_ElfExtension extends ElfExtension {
 		// see Wiki at  https://dmz-portal.mips.com/wiki/MIPS_Multi_GOT
 		// see related doc at https://www.cr0.org/paper/mips.elf.external.resolution.txt
 
-		ElfHeader elfHeader = elfLoadHelper.getElfHeader();
-		ElfDynamicTable dynamicTable = elfHeader.getDynamicTable();
-		ElfSymbolTable dynamicSymbolTable = elfHeader.getDynamicSymbolTable();
+		ElfFile elf = elfLoadHelper.getElfFile();
+		ElfDynamicTable dynamicTable = elf.getDynamicTable();
+		ElfSymbolTable dynamicSymbolTable = elf.getDynamicSymbolTable();
 		if (dynamicTable == null || dynamicSymbolTable == null) {
 			return;
 		}
@@ -808,9 +808,9 @@ public class MIPS_ElfExtension extends ElfExtension {
 
 	private void fixupMipsGot(ElfLoadHelper elfLoadHelper, TaskMonitor monitor) throws CancelledException {
 
-		ElfHeader elfHeader = elfLoadHelper.getElfHeader();
-		ElfDynamicTable dynamicTable = elfHeader.getDynamicTable();
-		ElfSymbolTable dynamicSymbolTable = elfHeader.getDynamicSymbolTable();
+		ElfFile elf = elfLoadHelper.getElfFile();
+		ElfDynamicTable dynamicTable = elf.getDynamicTable();
+		ElfSymbolTable dynamicSymbolTable = elf.getDynamicSymbolTable();
 		if (dynamicTable == null || dynamicSymbolTable == null) {
 			return;
 		}
@@ -914,11 +914,11 @@ public class MIPS_ElfExtension extends ElfExtension {
 	}
 
 	@Override
-	public Class<? extends ElfRelocation> getRelocationClass(ElfHeader elfHeader) {
-		if (elfHeader.is64Bit()) {
+	public Class<? extends ElfRelocation> getRelocationClass(ElfFile elf) {
+		if (elf.is64Bit()) {
 			return MIPS_Elf64Relocation.class;
 		}
-		return super.getRelocationClass(elfHeader);
+		return super.getRelocationClass(elf);
 	}
 
 }

@@ -18,10 +18,15 @@ package ghidra.app.util.bin.format.elf.relocation;
 import java.io.IOException;
 
 import ghidra.app.util.bin.BinaryReader;
-import ghidra.app.util.bin.format.elf.ElfHeader;
+import ghidra.app.util.bin.format.elf.ElfFile;
 import ghidra.app.util.bin.format.elf.ElfRelocation;
-import ghidra.program.model.data.*;
-import ghidra.util.*;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.StructureDataType;
+import ghidra.util.BigEndianDataConverter;
+import ghidra.util.DataConverter;
+import ghidra.util.LittleEndianDataConverter;
 
 /**
  * <code>MIPS_Elf64Relocation</code> provides a MIPS-64 extension implementation
@@ -41,15 +46,15 @@ public class MIPS_Elf64Relocation extends ElfRelocation {
 	}
 
 	@Override
-	protected void initElfRelocation(BinaryReader reader, ElfHeader elfHeader,
+	protected void initElfRelocation(ElfFile elf, BinaryReader reader,
 			int relocationTableIndex, boolean withAddend) throws IOException {
-		super.initElfRelocation(reader, elfHeader, relocationTableIndex, withAddend);
+		super.initElfRelocation(elf, reader, relocationTableIndex, withAddend);
 		long info = getRelocationInfo();
-		if (elfHeader.isLittleEndian()) {
+		if (elf.isLittleEndian()) {
 			// revert to big-endian byte order
 			info = DataConverter.swapBytes(info, 8);
 		}
-		DataConverter converter = elfHeader.isLittleEndian() ? LittleEndianDataConverter.INSTANCE
+		DataConverter converter = elf.isLittleEndian() ? LittleEndianDataConverter.INSTANCE
 				: BigEndianDataConverter.INSTANCE;
 		byte[] rSymBytes = BigEndianDataConverter.INSTANCE.getBytes((int) (info >>> 32));
 		symbolIndex = converter.getInt(rSymBytes);

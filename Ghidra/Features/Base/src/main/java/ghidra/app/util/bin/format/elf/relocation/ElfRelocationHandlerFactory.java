@@ -15,7 +15,7 @@
  */
 package ghidra.app.util.bin.format.elf.relocation;
 
-import ghidra.app.util.bin.format.elf.ElfHeader;
+import ghidra.app.util.bin.format.elf.ElfFile;
 import ghidra.util.classfinder.ClassSearcher;
 
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ public final class ElfRelocationHandlerFactory {
 			ClassSearcher.getInstances(ElfRelocationHandler.class));
 	}
 
-	public final static ElfRelocationHandler getHandler(ElfHeader elf) {
+	public final static ElfRelocationHandler getHandler(ElfFile elf) {
 		for (ElfRelocationHandler handler : getHandlers()) {
 			if (handler.canRelocate(elf)) {
 				return handler;

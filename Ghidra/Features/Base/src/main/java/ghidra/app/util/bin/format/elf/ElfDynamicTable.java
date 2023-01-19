@@ -16,11 +16,20 @@
 package ghidra.app.util.bin.format.elf;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.StructConverter;
-import ghidra.program.model.data.*;
+import ghidra.program.model.data.ArrayDataType;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DWordDataType;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.QWordDataType;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.util.DataConverter;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.NotFoundException;
@@ -32,24 +41,24 @@ import ghidra.util.exception.NotFoundException;
  * Elf32_Dyn or Elf64_Dyn structures.
  * <p>
  * All address entries contained within this table should adjusted for pre-linking 
- * using {@link ElfHeader#adjustAddressForPrelink(long)}.  If a pre-link adjustment is not applicable, 
+ * using {@link ElfFile#adjustAddressForPrelink(long)}.  If a pre-link adjustment is not applicable, 
  * this adjustment will have no affect.
  */
 public class ElfDynamicTable implements StructConverter {
 
 	private List<ElfDynamic> dynamics = new ArrayList<ElfDynamic>();
 
-	private ElfHeader header;
+	private ElfFile elf;
 	private ElfFileSection fileSection;
 
-	public ElfDynamicTable(ElfHeader header, ElfFileSection fileSection) throws IOException {
-		this.header = header;
+	public ElfDynamicTable(ElfFile elf, ElfFileSection fileSection) throws IOException {
+		this.elf = elf;
 		this.fileSection = fileSection;
 
 		BinaryReader reader = fileSection.getReader();
 		// Collect set of all _DYNAMIC array tags specified in .dynamic section
 		while (true) {
-			ElfDynamic dyn = new ElfDynamic(reader, header);
+			ElfDynamic dyn = new ElfDynamic(elf, reader);
 			dynamics.add(dyn);
 			if (dyn.getTag() == ElfDynamicType.DT_NULL.value) {
 				break;
@@ -183,8 +192,8 @@ public class ElfDynamicTable implements StructConverter {
 	@Override
 	public DataType toDataType() throws DuplicateNameException, IOException {
 
-		String typeSuffix = header.getTypeSuffix();
-		boolean is32bit = header.is32Bit();
+		String typeSuffix = elf.getTypeSuffix();
+		boolean is32bit = elf.is32Bit();
 		String name = is32bit ? "Elf32_Dyn" : "Elf64_Dyn";
 		if (typeSuffix != null) {
 			name = name + typeSuffix;
@@ -203,17 +212,17 @@ public class ElfDynamicTable implements StructConverter {
 
 	private DataType getTagDataType() {
 
-		boolean is32bit = header.is32Bit();
+		boolean is32bit = elf.is32Bit();
 		int size = is32bit ? 4 : 8;
 
-		HashMap<Integer, ElfDynamicType> dynamicTypeMap = header.getDynamicTypeMap();
+		Map<Integer, ElfDynamicType> dynamicTypeMap = elf.getDynamicTypeMap();
 		if (dynamicTypeMap == null) {
 			return is32bit ? DWordDataType.dataType : QWordDataType.dataType;
 		}
 
 		String name = is32bit ? "Elf32_DynTag" : "Elf64_DynTag";
 
-		String typeSuffix = header.getTypeSuffix();
+		String typeSuffix = elf.getTypeSuffix();
 		if (typeSuffix != null) {
 			name = name + typeSuffix;
 		}
@@ -230,7 +239,7 @@ public class ElfDynamicTable implements StructConverter {
 	}
 
 	public long getEntrySize() {
-		return header.is32Bit() ? 8 : 16;
+		return elf.is32Bit() ? 8 : 16;
 	}
 
 	/**

@@ -28,13 +28,13 @@ public class RISCV_ElfExtension extends ElfExtension {
     public static final String RISCV_SUFFIX="_RISCV";
     
     @Override
-    public boolean canHandle(ElfHeader elf) {
-    	return elf.e_machine() == ElfConstants.EM_RISCV;
+    public boolean canHandle(ElfFile elf) {
+    	return elf.getHeader().e_machine() == ElfConstants.EM_RISCV;
     }
 
     @Override
     public boolean canHandle(ElfLoadHelper elfLoadHelper) {
-    	if (!canHandle(elfLoadHelper.getElfHeader()))
+    	if (!canHandle(elfLoadHelper.getElfFile()))
     		return false;
 	
     	Language language = elfLoadHelper.getProgram().getLanguage();

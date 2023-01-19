@@ -36,14 +36,14 @@ public class AARCH64_ElfExtension extends ElfExtension {
 	private static final int SHF_COMDEF = 0x80000000; // section may be multiply defined
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_AARCH64;
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_AARCH64;
 	}
 
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
-		return canHandle(elfLoadHelper.getElfHeader()) &&
+		return canHandle(elfLoadHelper.getElfFile()) &&
 			"AARCH64".equals(language.getProcessor().toString());
 	}
 

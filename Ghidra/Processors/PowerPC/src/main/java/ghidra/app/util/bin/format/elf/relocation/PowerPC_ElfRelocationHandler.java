@@ -35,8 +35,8 @@ import ghidra.util.exception.*;
 public class PowerPC_ElfRelocationHandler extends ElfRelocationHandler {
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_PPC && elf.is32Bit();
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_PPC && elf.is32Bit();
 	}
 
 	@Override
@@ -52,8 +52,8 @@ public class PowerPC_ElfRelocationHandler extends ElfRelocationHandler {
 		PowerPC_ElfRelocationContext ppcRelocationContext =
 			(PowerPC_ElfRelocationContext) elfRelocationContext;
 
-		ElfHeader elf = ppcRelocationContext.getElfHeader();
-		if (elf.e_machine() != ElfConstants.EM_PPC || !elf.is32Bit()) {
+		ElfFile elf = ppcRelocationContext.getElfFile();
+		if (elf.getHeader().e_machine() != ElfConstants.EM_PPC || !elf.is32Bit()) {
 			return;
 		}
 

@@ -23,7 +23,12 @@ import java.util.stream.Collectors;
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteArrayConverter;
 import ghidra.app.util.bin.StructConverter;
-import ghidra.program.model.data.*;
+import ghidra.program.model.data.ArrayDataType;
+import ghidra.program.model.data.ByteDataType;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.util.DataConverter;
 import ghidra.util.exception.DuplicateNameException;
 
@@ -44,7 +49,7 @@ public class ElfSymbolTable implements ByteArrayConverter, StructConverter {
 
 	/**
 	 * Construct and parse an Elf symbol table
-	 * @param header elf header
+	 * @param elf elf file
 	 * @param fileSection symbol table file section
 	 * @param stringTable associated string table
 	 * @param symbolSectionIndexTable extended symbol section index table (may be null, used when 
@@ -53,13 +58,13 @@ public class ElfSymbolTable implements ByteArrayConverter, StructConverter {
 	 * @param isDynamic true if symbol table is the dynamic symbol table
 	 * @throws IOException if an IO or parse error occurs
 	 */
-	public ElfSymbolTable(ElfHeader header, ElfFileSection fileSection,
+	public ElfSymbolTable(ElfFile elf, ElfFileSection fileSection,
 			ElfStringTable stringTable, int[] symbolSectionIndexTable,
 			boolean isDynamic) throws IOException {
 
 		this.fileSection = fileSection;
 		this.stringTable = stringTable;
-		this.is32bit = header.is32Bit();
+		this.is32bit = elf.is32Bit();
 		this.symbolSectionIndexTable = symbolSectionIndexTable;
 		this.isDynamic = isDynamic;
 
@@ -77,7 +82,7 @@ public class ElfSymbolTable implements ByteArrayConverter, StructConverter {
 			// Reposition reader to start of symbol element since ElfSymbol object 
 			// may not consume all symbol element data
 			reader.setPointerIndex(entryPos);
-			ElfSymbol sym = new ElfSymbol(reader, i, this, header);
+			ElfSymbol sym = new ElfSymbol(elf, reader, i, this);
 			symbolList.add(sym);
 			entryPos += entrySize;
 		}

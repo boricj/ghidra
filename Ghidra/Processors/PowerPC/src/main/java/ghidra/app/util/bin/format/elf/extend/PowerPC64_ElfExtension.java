@@ -69,14 +69,14 @@ public class PowerPC64_ElfExtension extends ElfExtension {
 	public static final String TOC_BASE = "TOC_BASE"; // injected symbol to mark global TOC_BASE
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_PPC64 && elf.is64Bit();
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_PPC64 && elf.is64Bit();
 	}
 
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
-		return canHandle(elfLoadHelper.getElfHeader()) &&
+		return canHandle(elfLoadHelper.getElfFile()) &&
 			"PowerPC".equals(language.getProcessor().toString()) &&
 			language.getLanguageDescription().getSize() == 64;
 	}
@@ -150,8 +150,8 @@ public class PowerPC64_ElfExtension extends ElfExtension {
 	private void processPpc64PltGotPointerTable(ElfLoadHelper elfLoadHelper, TaskMonitor monitor)
 			throws CancelledException {
 
-		ElfHeader elf = elfLoadHelper.getElfHeader();
-		if (getPpc64ABIVersion(elf) == 2) {
+		ElfFile elf = elfLoadHelper.getElfFile();
+		if (getPpc64ABIVersion(elf.getHeader()) == 2) {
 			// paint TOC_BASE value as r2 across executable blocks since r2
 			// is needed to resolve call stubs
 			Symbol tocSymbol = SymbolUtilities.getLabelOrFunctionSymbol(elfLoadHelper.getProgram(),
@@ -236,7 +236,7 @@ public class PowerPC64_ElfExtension extends ElfExtension {
 	private void processPpc64v2PltPointerTable(ElfLoadHelper elfLoadHelper, TaskMonitor monitor)
 			throws CancelledException {
 
-		ElfHeader elf = elfLoadHelper.getElfHeader();
+		ElfFile elf = elfLoadHelper.getElfFile();
 		ElfSection pltSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionConstants.dot_plt));
 		if (pltSection == null) {
 			return;
@@ -253,7 +253,7 @@ public class PowerPC64_ElfExtension extends ElfExtension {
 		// set pltBlock read-only to permit decompiler simplification
 		pltBlock.setWrite(false);
 
-		if (getPpc64ABIVersion(elf) != 2) {
+		if (getPpc64ABIVersion(elf.getHeader()) != 2) {
 			// TODO: add support for other PLT implementations
 			return;
 		}

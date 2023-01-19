@@ -54,12 +54,12 @@ import ghidra.util.StringUtilities;
  */
 public class ElfDynamic implements ByteArrayConverter {
 
-	private ElfHeader elf;
+	private ElfFile elf;
 
 	private int d_tag;
     private long d_val;
 
-	public ElfDynamic(BinaryReader reader, ElfHeader elf)
+	public ElfDynamic(ElfFile elf, BinaryReader reader)
 			throws IOException {
 		this.elf = elf;
 		if (elf.is32Bit()) {
@@ -74,11 +74,11 @@ public class ElfDynamic implements ByteArrayConverter {
 
     /**
      * Constructs a new ELF dynamic with the specified tag and value.
+     * @param elf     the elf file
      * @param tag     the tag (or type) of this dynamic
      * @param value   the value (or pointer) of this dynamic
-     * @param elf     the elf header
      */
-	public ElfDynamic(int tag, long value, ElfHeader elf) {
+	public ElfDynamic(ElfFile elf, int tag, long value) {
         this.d_tag = tag;
         this.d_val = value;
 		this.elf = elf;
@@ -86,12 +86,12 @@ public class ElfDynamic implements ByteArrayConverter {
 
     /**
      * Constructs a new ELF dynamic with the specified (enum) tag and value.
+     * @param elf     the elf file
      * @param tag     the (enum) tag (or type) of this dynamic
      * @param value   the value (or pointer) of this dynamic
-     * @param elf     the elf header
      */
-	public ElfDynamic(ElfDynamicType tag, long value, ElfHeader elf) {
-		this(tag.value, value, elf);
+	public ElfDynamic(ElfFile elf, ElfDynamicType tag, long value) {
+		this(elf, tag.value, value);
     }
 
     /**

@@ -29,14 +29,14 @@ import ghidra.util.task.TaskMonitor;
 public class X86_32_ElfExtension extends ElfExtension {
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_386 && elf.is32Bit();
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_386 && elf.is32Bit();
 	}
 	
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
-		return canHandle(elfLoadHelper.getElfHeader()) && 
+		return canHandle(elfLoadHelper.getElfFile()) && 
 				"x86".equals(language.getProcessor().toString()) &&
 						language.getLanguageDescription().getSize() == 32;
 	}
@@ -72,13 +72,13 @@ public class X86_32_ElfExtension extends ElfExtension {
 		// TODO: Would be better to use only dynamic table entries since sections may be stripped -
 		// the unresolved issue is to determine the length of the PLT area without a section
 		
-		ElfHeader elfHeader = elfLoadHelper.getElfHeader();
-		ElfSection pltSection = elfHeader.getSection(e -> e.getNameAsString().equals(ElfSectionConstants.dot_plt));
+		ElfFile elf = elfLoadHelper.getElfFile();
+		ElfSection pltSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionConstants.dot_plt));
 		if (pltSection == null || !pltSection.isExecutable()) {
 			return;
 		}
 		
-		ElfDynamicTable dynamicTable = elfHeader.getDynamicTable();
+		ElfDynamicTable dynamicTable = elf.getDynamicTable();
 		if (dynamicTable == null || !dynamicTable.containsDynamicValue(ElfDynamicType.DT_PLTGOT)) {
 			return; // avoid NotFoundException which causes issues for importer
 		}
@@ -95,7 +95,7 @@ public class X86_32_ElfExtension extends ElfExtension {
 		// Paint pltgot base over .plt section to allow thunks to be resolved during analysis
 		Register ebxReg = program.getRegister("EBX");
 		try {
-			long pltgotOffset = elfHeader.adjustAddressForPrelink(dynamicTable.getDynamicValue(
+			long pltgotOffset = elf.adjustAddressForPrelink(dynamicTable.getDynamicValue(
 					ElfDynamicType.DT_PLTGOT));
 			pltgotOffset = elfLoadHelper.getDefaultAddress(pltgotOffset).getOffset(); // adjusted for image base
 			RegisterValue pltgotValue = new RegisterValue(ebxReg, BigInteger.valueOf(pltgotOffset));

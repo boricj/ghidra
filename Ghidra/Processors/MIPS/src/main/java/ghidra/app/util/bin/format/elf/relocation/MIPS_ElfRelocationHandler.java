@@ -15,19 +15,35 @@
  */
 package ghidra.app.util.bin.format.elf.relocation;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Map;
 
 import ghidra.app.util.MemoryBlockUtils;
-import ghidra.app.util.bin.format.elf.*;
+import ghidra.app.util.bin.format.elf.ElfConstants;
+import ghidra.app.util.bin.format.elf.ElfFile;
+import ghidra.app.util.bin.format.elf.ElfHeader;
+import ghidra.app.util.bin.format.elf.ElfLoadHelper;
+import ghidra.app.util.bin.format.elf.ElfRelocation;
+import ghidra.app.util.bin.format.elf.ElfRelocationTable;
+import ghidra.app.util.bin.format.elf.ElfSymbol;
 import ghidra.app.util.bin.format.elf.extend.MIPS_ElfExtension;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.program.model.address.*;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.address.AddressOverflowException;
+import ghidra.program.model.address.AddressRange;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.mem.*;
+import ghidra.program.model.mem.Memory;
+import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolUtilities;
-import ghidra.util.*;
+import ghidra.util.BigEndianDataConverter;
+import ghidra.util.DataConverter;
+import ghidra.util.LittleEndianDataConverter;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.NotFoundException;
 
@@ -39,8 +55,8 @@ public class MIPS_ElfRelocationHandler extends ElfRelocationHandler {
 //	private static final String GOT_SYMBOL_NAME = "_GLOBAL_OFFSET_TABLE_";
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_MIPS;
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_MIPS;
 	}
 
 	@Override

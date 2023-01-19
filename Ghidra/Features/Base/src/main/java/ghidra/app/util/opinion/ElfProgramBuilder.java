@@ -15,44 +15,122 @@
  */
 package ghidra.app.util.opinion;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.file.AccessMode;
 import java.text.NumberFormat;
-import java.util.*;
-import java.util.function.Predicate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.lang3.StringUtils;
 
 import ghidra.app.cmd.label.SetLabelPrimaryCmd;
-import ghidra.app.util.*;
-import ghidra.app.util.bin.*;
+import ghidra.app.util.MemoryBlockUtils;
+import ghidra.app.util.Option;
+import ghidra.app.util.OptionUtils;
+import ghidra.app.util.bin.ByteProvider;
+import ghidra.app.util.bin.ByteProviderWrapper;
+import ghidra.app.util.bin.MemoryByteProvider;
+import ghidra.app.util.bin.ObfuscatedFileByteProvider;
+import ghidra.app.util.bin.ObfuscatedOutputStream;
 import ghidra.app.util.bin.format.MemoryLoadable;
-import ghidra.app.util.bin.format.elf.*;
+import ghidra.app.util.bin.format.elf.ElfConstants;
+import ghidra.app.util.bin.format.elf.ElfDynamic;
+import ghidra.app.util.bin.format.elf.ElfDynamicTable;
+import ghidra.app.util.bin.format.elf.ElfDynamicType;
 import ghidra.app.util.bin.format.elf.ElfDynamicType.ElfDynamicValueType;
+import ghidra.app.util.bin.format.elf.ElfException;
+import ghidra.app.util.bin.format.elf.ElfFile;
+import ghidra.app.util.bin.format.elf.ElfFileSection;
+import ghidra.app.util.bin.format.elf.ElfLoadHelper;
+import ghidra.app.util.bin.format.elf.ElfRelocation;
+import ghidra.app.util.bin.format.elf.ElfRelocationTable;
+import ghidra.app.util.bin.format.elf.ElfSection;
+import ghidra.app.util.bin.format.elf.ElfSectionConstants;
+import ghidra.app.util.bin.format.elf.ElfSegment;
+import ghidra.app.util.bin.format.elf.ElfSegmentConstants;
+import ghidra.app.util.bin.format.elf.ElfStringTable;
+import ghidra.app.util.bin.format.elf.ElfSymbol;
+import ghidra.app.util.bin.format.elf.ElfSymbolTable;
+import ghidra.app.util.bin.format.elf.GnuBuildIdSection;
+import ghidra.app.util.bin.format.elf.GnuDebugLinkSection;
 import ghidra.app.util.bin.format.elf.extend.ElfLoadAdapter;
-import ghidra.app.util.bin.format.elf.relocation.*;
+import ghidra.app.util.bin.format.elf.relocation.ElfRelocationContext;
+import ghidra.app.util.bin.format.elf.relocation.ElfRelocationHandler;
+import ghidra.app.util.bin.format.elf.relocation.ElfRelocationHandlerFactory;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.options.Options;
 import ghidra.program.database.mem.FileBytes;
 import ghidra.program.database.register.AddressRangeObjectMap;
-import ghidra.program.model.address.*;
-import ghidra.program.model.data.*;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.address.AddressOverflowException;
+import ghidra.program.model.address.AddressRange;
+import ghidra.program.model.address.AddressRangeImpl;
+import ghidra.program.model.address.AddressRangeIterator;
+import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.data.Array;
+import ghidra.program.model.data.ArrayDataType;
+import ghidra.program.model.data.DWordDataType;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataUtilities;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
+import ghidra.program.model.data.MutabilitySettingsDefinition;
+import ghidra.program.model.data.PointerDataType;
+import ghidra.program.model.data.QWordDataType;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.TerminatedStringDataType;
+import ghidra.program.model.data.Undefined;
+import ghidra.program.model.data.WordDataType;
 import ghidra.program.model.lang.Register;
-import ghidra.program.model.listing.*;
-import ghidra.program.model.mem.*;
+import ghidra.program.model.listing.CodeUnit;
+import ghidra.program.model.listing.Data;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.FunctionManager;
+import ghidra.program.model.listing.Library;
+import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.Program;
+import ghidra.program.model.listing.ProgramFragment;
+import ghidra.program.model.listing.ProgramModule;
+import ghidra.program.model.mem.Memory;
+import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.scalar.Scalar;
-import ghidra.program.model.symbol.*;
+import ghidra.program.model.symbol.ExternalLocation;
+import ghidra.program.model.symbol.ExternalManager;
+import ghidra.program.model.symbol.Namespace;
+import ghidra.program.model.symbol.RefType;
+import ghidra.program.model.symbol.SourceType;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolIterator;
+import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.symbol.SymbolUtilities;
 import ghidra.program.model.util.AddressSetPropertyMap;
 import ghidra.program.model.util.CodeUnitInsertionException;
-import ghidra.util.*;
-import ghidra.util.datastruct.*;
-import ghidra.util.exception.*;
+import ghidra.util.DataConverter;
+import ghidra.util.MonitoredInputStream;
+import ghidra.util.Msg;
+import ghidra.util.NumericUtilities;
+import ghidra.util.StringUtilities;
+import ghidra.util.datastruct.IndexRange;
+import ghidra.util.datastruct.IndexRangeIterator;
+import ghidra.util.datastruct.RangeMap;
+import ghidra.util.exception.AssertException;
+import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.DuplicateNameException;
+import ghidra.util.exception.InvalidInputException;
+import ghidra.util.exception.NoValueException;
+import ghidra.util.exception.NotEmptyException;
+import ghidra.util.exception.NotFoundException;
 import ghidra.util.task.TaskMonitor;
 import utilities.util.FileUtilities;
 
@@ -76,7 +154,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	private Long dataImageBase; // cached data image base option or null if not applicable
 	private MessageLog log;
 
-	private ElfHeader elf;
+	private ElfFile elf;
 	private ByteProvider byteProvider;
 	private FileBytes fileBytes;
 
@@ -102,7 +180,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	}
 
 	@Override
-	public ElfHeader getElfHeader() {
+	public ElfFile getElfFile() {
 		return elf;
 	}
 
@@ -115,7 +193,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	protected void load(TaskMonitor monitor) throws IOException, CancelledException, ElfException {
 		monitor.setMessage("Parsing ELF file...");
 		monitor.setCancelEnabled(false);
-		elf = new ElfHeader(byteProvider, msg -> log.appendMsg(msg));
+		elf = new ElfFile(byteProvider, msg -> log.appendMsg(msg));
 		monitor.setCancelEnabled(true);
 
 		int id = program.startTransaction("Load ELF program");
@@ -248,15 +326,15 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		}
 
 		// Ignore header regions which will always be allocated to blocks
-		int elfHeaderSize = elf.toDataType().getLength();
+		int elfHeaderSize = getElfHeader().toDataType().getLength();
 		fileMap.paintRange(0, elfHeaderSize - 1, -4); // -4: header block
-		int programHeaderSize = elf.e_phentsize() * elf.getSegments().size();
+		int programHeaderSize = getElfHeader().e_phentsize() * elf.getSegments().size();
 		if (programHeaderSize != 0) {
-			fileMap.paintRange(elf.e_phoff(), elf.e_phoff() + programHeaderSize - 1, -4); // -4: header block
+			fileMap.paintRange(getElfHeader().e_phoff(), getElfHeader().e_phoff() + programHeaderSize - 1, -4); // -4: header block
 		}
-		int sectionHeaderSize = elf.e_shentsize() * elf.getSections().size();
+		int sectionHeaderSize = getElfHeader().e_shentsize() * elf.getSections().size();
 		if (sectionHeaderSize != 0) {
-			fileMap.paintRange(elf.e_shoff(), elf.e_shoff() + sectionHeaderSize - 1, -4); // -4: header block
+			fileMap.paintRange(getElfHeader().e_shoff(), getElfHeader().e_shoff() + sectionHeaderSize - 1, -4); // -4: header block
 		}
 
 		// Add unallocated non-zero file regions as OTHER blocks
@@ -409,7 +487,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 		String elfFileType;
 		boolean isRelocatable = false;
-		switch (elf.e_type()) {
+		switch (getElfHeader().e_type()) {
 			case ElfConstants.ET_NONE:
 				elfFileType = "unspecified";
 				break;
@@ -613,12 +691,12 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		monitor.checkCanceled();
 		monitor.setMessage("Creating entry points...");
 
-		long entry = elf.e_entry(); // already adjusted for pre-link
+		long entry = elf.adjustAddressForPrelink(getElfHeader().e_entry());
 		if (entry != 0) {
 			Address entryAddr =
 				createEntryFunction(ElfLoader.ELF_ENTRY_FUNCTION_NAME, entry, monitor);
 			if (entryAddr != null) {
-				addElfHeaderReferenceMarkup(elf.getEntryComponentOrdinal(), entryAddr);
+				addElfHeaderReferenceMarkup(getElfHeader().getEntryComponentOrdinal(), entryAddr);
 			}
 		}
 
@@ -1019,7 +1097,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	 */
 	private void addElfHeaderReferenceMarkup(int componentOrdinal, Address refAddr) {
 
-		Structure struct = (Structure) elf.toDataType();
+		Structure struct = (Structure) getElfHeader().toDataType();
 
 		Address headerAddr = findLoadAddress(0, struct.getLength());
 		if (headerAddr == null) {
@@ -1042,7 +1120,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	private void markupElfHeader(TaskMonitor monitor) {
 
-		DataType dt = elf.toDataType();
+		DataType dt = getElfHeader().toDataType();
 
 		Address headerAddr = findLoadAddress(0, dt.getLength());
 
@@ -1054,7 +1132,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 				}
 				headerAddr = AddressSpace.OTHER_SPACE.getAddress(0);
 				MemoryBlock block = createInitializedBlock(null, true, ELF_HEADER_BLOCK_NAME,
-					headerAddr, 0, elf.e_ehsize(), "Elf File Header", false, false, false, monitor);
+					headerAddr, 0, getElfHeader().e_ehsize(), "Elf File Header", false, false, false, monitor);
 				headerAddr = block.getStart();
 			}
 			createData(headerAddr, program.getDataTypeManager().resolve(dt, null));
@@ -1067,7 +1145,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	private void markupProgramHeaders(TaskMonitor monitor) {
 
 		int headerCount = elf.getSegments().size();
-		int size = elf.e_phentsize() * headerCount;
+		int size = getElfHeader().e_phentsize() * headerCount;
 		if (size == 0) {
 			return;
 		}
@@ -1079,7 +1157,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 		Array arrayDt = new ArrayDataType(phStructDt, headerCount, size);
 
-		Address headerAddr = findLoadAddress(elf.e_phoff(), size);
+		Address headerAddr = findLoadAddress(getElfHeader().e_phoff(), size);
 
 		// Create block for header if failed to locate load
 		try {
@@ -1089,12 +1167,12 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 				}
 				headerAddr = AddressSpace.OTHER_SPACE.getAddress(0);
 				MemoryBlock block = createInitializedBlock(null, true,
-					ELF_PROGRAM_HEADERS_BLOCK_NAME, headerAddr, elf.e_phoff(), arrayDt.getLength(),
+					ELF_PROGRAM_HEADERS_BLOCK_NAME, headerAddr, getElfHeader().e_phoff(), arrayDt.getLength(),
 					"Elf Program Headers", false, false, false, monitor);
 				headerAddr = block.getStart();
 			}
 
-			addElfHeaderReferenceMarkup(elf.getPhoffComponentOrdinal(), headerAddr);
+			addElfHeaderReferenceMarkup(getElfHeader().getPhoffComponentOrdinal(), headerAddr);
 
 			Data array =
 				createData(headerAddr, program.getDataTypeManager().resolve(arrayDt, null));
@@ -1135,7 +1213,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 	private void markupSectionHeaders(TaskMonitor monitor) {
 
 		int headerCount = elf.getSections().size();
-		int size = elf.e_shentsize() * headerCount;
+		int size = getElfHeader().e_shentsize() * headerCount;
 		if (size == 0) {
 			return;
 		}
@@ -1145,9 +1223,9 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 		Structure shStructDt = (Structure) elf.getSections().get(0).toDataType();
 		shStructDt = shStructDt.clone(program.getDataTypeManager());
 
-		Array arrayDt = new ArrayDataType(shStructDt, headerCount, elf.e_shentsize());
+		Array arrayDt = new ArrayDataType(shStructDt, headerCount, getElfHeader().e_shentsize());
 
-		Address headerAddr = findLoadAddress(elf.e_shoff(), size);
+		Address headerAddr = findLoadAddress(getElfHeader().e_shoff(), size);
 
 		// Create block for header if failed to locate load
 		try {
@@ -1157,12 +1235,12 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 				}
 				headerAddr = AddressSpace.OTHER_SPACE.getAddress(0);
 				MemoryBlock block = createInitializedBlock(null, true,
-					ELF_SECTION_HEADERS_BLOCK_NAME, headerAddr, elf.e_shoff(), arrayDt.getLength(),
+					ELF_SECTION_HEADERS_BLOCK_NAME, headerAddr, getElfHeader().e_shoff(), arrayDt.getLength(),
 					"Elf Section Headers", false, false, false, monitor);
 				headerAddr = block.getStart();
 			}
 
-			addElfHeaderReferenceMarkup(elf.getShoffComponentOrdinal(), headerAddr);
+			addElfHeaderReferenceMarkup(getElfHeader().getShoffComponentOrdinal(), headerAddr);
 
 			Data array =
 				createData(headerAddr, program.getDataTypeManager().resolve(arrayDt, null));
@@ -1505,7 +1583,7 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 					try (ByteProvider debugDataBP =
 						new ObfuscatedFileByteProvider(tmpFile, null, AccessMode.READ)) {
 
-						ElfHeader minidebugElf = new ElfHeader(debugDataBP, null);
+						ElfFile minidebugElf = new ElfFile(debugDataBP, null);
 
 						List<ElfSymbolTable> minidebugSymbolTables = minidebugElf.getSymbolTables();
 						int debugSymbolsCount = 0;
@@ -3193,11 +3271,10 @@ class ElfProgramBuilder extends MemorySectionResolver implements ElfLoadHelper {
 
 	@Override
 	public Long getGOTValue() {
-		ElfHeader header = getElfHeader();
-		ElfDynamicTable dynamic = header.getDynamicTable();
+		ElfDynamicTable dynamic = elf.getDynamicTable();
 		if (dynamic != null && dynamic.containsDynamicValue(ElfDynamicType.DT_PLTGOT)) {
 			try {
-				return header.adjustAddressForPrelink(
+				return elf.adjustAddressForPrelink(
 					dynamic.getDynamicValue(ElfDynamicType.DT_PLTGOT)) +
 					getImageBaseWordAdjustmentOffset();
 			}

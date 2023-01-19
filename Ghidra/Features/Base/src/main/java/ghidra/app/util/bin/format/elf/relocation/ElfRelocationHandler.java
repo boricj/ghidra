@@ -38,7 +38,7 @@ import ghidra.util.exception.NotFoundException;
  */
 abstract public class ElfRelocationHandler implements ExtensionPoint {
 
-	abstract public boolean canRelocate(ElfHeader elf);
+	abstract public boolean canRelocate(ElfFile elf);
 
 	/**
 	 * Get the architecture-specific relative relocation type 

@@ -18,8 +18,13 @@ package ghidra.app.util.opinion;
 import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.bin.format.elf.ElfHeader;
 import ghidra.docking.settings.Settings;
-import ghidra.program.model.data.*;
-import ghidra.program.model.mem.*;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.FactoryStructureDataType;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.mem.MemBuffer;
+import ghidra.program.model.mem.Memory;
+import ghidra.program.model.mem.MemoryBlock;
 
 public class ElfDataType extends FactoryStructureDataType {
 	private final static long serialVersionUID = 1;
@@ -55,7 +60,7 @@ public class ElfDataType extends FactoryStructureDataType {
 
 	        ByteArrayProvider bap = new ByteArrayProvider(bytes);
 
-			ElfHeader elf = new ElfHeader(bap, null);
+			ElfHeader elf = new ElfHeader(bap);
 
 	        struct.add(elf.toDataType());
 		}

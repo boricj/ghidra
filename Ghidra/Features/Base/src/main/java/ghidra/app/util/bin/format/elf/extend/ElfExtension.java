@@ -15,14 +15,14 @@
  */
 package ghidra.app.util.bin.format.elf.extend;
 
-import ghidra.app.util.bin.format.elf.ElfHeader;
+import ghidra.app.util.bin.format.elf.ElfFile;
 import ghidra.app.util.bin.format.elf.ElfLoadHelper;
 import ghidra.util.classfinder.ExtensionPoint;
 
 abstract public class ElfExtension extends ElfLoadAdapter implements ExtensionPoint {
 
 	@Override
-	public abstract boolean canHandle(ElfHeader elf);
+	public abstract boolean canHandle(ElfFile elf);
 	
 	@Override
 	public abstract boolean canHandle(ElfLoadHelper elfLoadHelper);

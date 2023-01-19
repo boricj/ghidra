@@ -27,8 +27,8 @@ import ghidra.util.exception.NotFoundException;
 public class AARCH64_ElfRelocationHandler extends ElfRelocationHandler {
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_AARCH64;
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_AARCH64;
 	}
 
 	@Override

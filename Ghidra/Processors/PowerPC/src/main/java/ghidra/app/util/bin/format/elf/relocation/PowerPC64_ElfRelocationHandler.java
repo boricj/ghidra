@@ -30,8 +30,8 @@ import ghidra.util.exception.NotFoundException;
 public class PowerPC64_ElfRelocationHandler extends ElfRelocationHandler {
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_PPC64 && elf.is64Bit();
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_PPC64 && elf.is64Bit();
 	}
 
 	@Override

@@ -32,15 +32,15 @@ public class HCS12X_ElfExtension extends ElfExtension {
 		new ElfSectionType(0x70000003, "SHT_AHCS12_ATTRIBUTES", "Attribute section");
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_68HC12;
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_68HC12;
 	}
 
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
 		boolean isSpecialHCSMemory = isHCS12(language) || isHCS12X(language);
-		return canHandle(elfLoadHelper.getElfHeader()) && isSpecialHCSMemory;
+		return canHandle(elfLoadHelper.getElfFile()) && isSpecialHCSMemory;
 	}
 
 	@Override

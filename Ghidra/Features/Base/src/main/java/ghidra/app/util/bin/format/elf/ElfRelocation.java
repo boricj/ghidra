@@ -18,11 +18,16 @@ package ghidra.app.util.bin.format.elf;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 
-import ghidra.app.util.bin.*;
+import ghidra.app.util.bin.BinaryReader;
+import ghidra.app.util.bin.ByteArrayConverter;
+import ghidra.app.util.bin.StructConverter;
 import ghidra.app.util.bin.format.elf.extend.ElfLoadAdapter;
 import ghidra.app.util.bin.format.elf.relocation.ElfRelocationContext;
 import ghidra.app.util.bin.format.elf.relocation.ElfRelocationHandler;
-import ghidra.program.model.data.*;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.util.Conv;
 import ghidra.util.DataConverter;
 
@@ -70,8 +75,8 @@ import ghidra.util.DataConverter;
  * 
  * NOTE: instantiation relies on the use of a default constructor which must be 
  * implemented by any extension.  An extension should implement the methods
- * {@link #initElfRelocation(BinaryReader, ElfHeader, int, boolean)} and/or
- * {@link #initElfRelocation(ElfHeader, int, boolean, long, long, long)}.  
+ * {@link #initElfRelocation(ElfFile, BinaryReader, int, boolean)} and/or
+ * {@link #initElfRelocation(ElfFile, int, boolean, long, long, long)}.  
  */
 public class ElfRelocation implements ByteArrayConverter, StructConverter {
 
@@ -91,25 +96,25 @@ public class ElfRelocation implements ByteArrayConverter, StructConverter {
 
 	/**
 	 * Factory construction and initialization method for a ELF relocation entry
+	 * @param elf ELF file
 	 * @param reader binary reader positioned at start of relocation entry.
-	 * @param elfHeader ELF header
 	 * @param relocationIndex index of entry in relocation table
 	 * @param withAddend true if if RELA entry with addend, else false
 	 * @return ELF relocation object
 	 * @throws IOException if an IO or parse error occurs
 	 */
-	static ElfRelocation createElfRelocation(BinaryReader reader,
-			ElfHeader elfHeader, int relocationIndex, boolean withAddend) throws IOException {
-		Class<? extends ElfRelocation> elfRelocationClazz = getElfRelocationClass(elfHeader);
+	static ElfRelocation createElfRelocation(ElfFile elf,
+		BinaryReader reader, int relocationIndex, boolean withAddend) throws IOException {
+		Class<? extends ElfRelocation> elfRelocationClazz = getElfRelocationClass(elf);
 		ElfRelocation elfRelocation = getInstance(elfRelocationClazz);
-		elfRelocation.initElfRelocation(reader, elfHeader, relocationIndex, withAddend);
+		elfRelocation.initElfRelocation(elf, reader, relocationIndex, withAddend);
 		return elfRelocation;
 	}
 
 	/**
 	 * GenericFactory construction and initialization method for a ELF representative 
 	 * relocation entry 
-	 * @param elfHeader ELF header
+	 * @param elf ELF file
 	 * @param relocationIndex index of entry in relocation table
 	 * @param withAddend true if if RELA entry with addend, else false
 	 * @param r_offset The offset for the entry
@@ -118,12 +123,12 @@ public class ElfRelocation implements ByteArrayConverter, StructConverter {
 	 * @return ELF relocation object
 	 * @throws IOException if an IO or parse error occurs
 	 */
-	static ElfRelocation createElfRelocation(ElfHeader elfHeader,
+	static ElfRelocation createElfRelocation(ElfFile elf,
 			int relocationIndex, boolean withAddend, long r_offset, long r_info, long r_addend)
 			throws IOException {
-		Class<? extends ElfRelocation> elfRelocationClazz = getElfRelocationClass(elfHeader);
+		Class<? extends ElfRelocation> elfRelocationClazz = getElfRelocationClass(elf);
 		ElfRelocation elfRelocation = getInstance(elfRelocationClazz);
-		elfRelocation.initElfRelocation(elfHeader, relocationIndex, withAddend, r_offset, r_info,
+		elfRelocation.initElfRelocation(elf, relocationIndex, withAddend, r_offset, r_info,
 			r_addend);
 		return elfRelocation;
 	}
@@ -143,11 +148,11 @@ public class ElfRelocation implements ByteArrayConverter, StructConverter {
 		}
 	}
 
-	private static Class<? extends ElfRelocation> getElfRelocationClass(ElfHeader elfHeader) {
+	private static Class<? extends ElfRelocation> getElfRelocationClass(ElfFile elf) {
 		Class<? extends ElfRelocation> elfRelocationClass = null;
-		ElfLoadAdapter loadAdapter = elfHeader.getLoadAdapter();
+		ElfLoadAdapter loadAdapter = elf.getLoadAdapter();
 		if (loadAdapter != null) {
-			elfRelocationClass = loadAdapter.getRelocationClass(elfHeader);
+			elfRelocationClass = loadAdapter.getRelocationClass(elf);
 		}
 		if (elfRelocationClass == null) {
 			elfRelocationClass = ElfRelocation.class;
@@ -159,24 +164,24 @@ public class ElfRelocation implements ByteArrayConverter, StructConverter {
 	 * Instantiate an uninitialized relocation object.
 	 * <p>
 	 * NOTE: This method is intended for use by the various factory methods which should generally
-	 * be used when building-up a relocation table (see {@link #createElfRelocation(BinaryReader, ElfHeader, int, boolean)}
-	 * and {@link #createElfRelocation(ElfHeader, int, boolean, long, long, long)}).
+	 * be used when building-up a relocation table (see {@link #createElfRelocation(ElfFile, BinaryReader, int, boolean)}
+	 * and {@link #createElfRelocation(ElfFile, int, boolean, long, long, long)}).
 	 */
 	public ElfRelocation() {
 	}
 
 	/**
-	 * Initialize ELF relocation entry using data from the binary reader's current position. 
+	 * Initialize ELF relocation entry using data from the binary reader's current position.
+	 * @param elf ELF file
 	 * @param reader binary reader positioned to the relocation entry data.  If null, 
 	 * a representative instance will be generated with all fields set to 0.
-	 * @param elfHeader ELF header
 	 * @param relocationTableIndex index of relocation within relocation table
 	 * @param withAddend true if if RELA entry with addend, else false
 	 * @throws IOException if an IO or parse error occurs
 	 */
-	protected void initElfRelocation(BinaryReader reader, ElfHeader elfHeader,
+	protected void initElfRelocation(ElfFile elf, BinaryReader reader,
 			int relocationTableIndex, boolean withAddend) throws IOException {
-		this.is32bit = elfHeader.is32Bit();
+		this.is32bit = elf.is32Bit();
 		this.relocationIndex = relocationTableIndex;
 		this.hasAddend = withAddend;
 		if (reader != null) {
@@ -186,7 +191,7 @@ public class ElfRelocation implements ByteArrayConverter, StructConverter {
 
 	/**
 	 * Initialize ELF relocation entry using data provided via the parameters.
-	 * @param elfHeader ELF header
+	 * @param elf ELF file
 	 * @param relocationTableIndex index of relocation within relocation table
 	 * @param withAddend true if if RELA entry with addend, else false
 	 * @param r_offset The offset for the entry
@@ -194,9 +199,9 @@ public class ElfRelocation implements ByteArrayConverter, StructConverter {
 	 * @param r_addend The addend for the entry
 	 * @throws IOException if an IO or parse error occurs
 	 */
-	protected void initElfRelocation(ElfHeader elfHeader, int relocationTableIndex,
+	protected void initElfRelocation(ElfFile elf, int relocationTableIndex,
 			boolean withAddend, long r_offset, long r_info, long r_addend) throws IOException {
-		this.is32bit = elfHeader.is32Bit();
+		this.is32bit = elf.is32Bit();
 		this.relocationIndex = relocationTableIndex;
 		this.hasAddend = withAddend;
 

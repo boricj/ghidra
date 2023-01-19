@@ -58,14 +58,14 @@ public class PowerPC_ElfExtension extends ElfExtension {
 	private static final int SHF_PPC_VLE = 0x10000000;
 
 	@Override
-	public boolean canHandle(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_PPC && elf.is32Bit();
+	public boolean canHandle(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_PPC && elf.is32Bit();
 	}
 
 	@Override
 	public boolean canHandle(ElfLoadHelper elfLoadHelper) {
 		Language language = elfLoadHelper.getProgram().getLanguage();
-		return canHandle(elfLoadHelper.getElfHeader()) &&
+		return canHandle(elfLoadHelper.getElfFile()) &&
 			"PowerPC".equals(language.getProcessor().toString()) &&
 			language.getLanguageDescription().getSize() == 32;
 	}
@@ -100,10 +100,10 @@ public class PowerPC_ElfExtension extends ElfExtension {
 
 	private void processDynamicPpcGotEntry(ElfLoadHelper elfLoadHelper) {
 
-		ElfHeader elfHeader = elfLoadHelper.getElfHeader();
+		ElfFile elf = elfLoadHelper.getElfFile();
 
 		// Presence of DT_PPC_GOT signals old ABI
-		ElfDynamicTable dynamicTable = elfHeader.getDynamicTable();
+		ElfDynamicTable dynamicTable = elf.getDynamicTable();
 		if (dynamicTable == null || !dynamicTable.containsDynamicValue(DT_PPC_GOT)) {
 			return;
 		}
@@ -277,7 +277,7 @@ public class PowerPC_ElfExtension extends ElfExtension {
 
 		RegisterValue enableVLE = new RegisterValue(vleContextReg, BigInteger.ONE);
 
-		ElfHeader elf = elfLoadHelper.getElfHeader();
+		ElfFile elf = elfLoadHelper.getElfFile();
 		if (elf.getSections().size() != 0) {
 			// Rely on section headers if present
 			for (ElfSection section : elf.getSections(e -> e.getType() == ElfSectionConstants.SHT_PROGBITS)) {

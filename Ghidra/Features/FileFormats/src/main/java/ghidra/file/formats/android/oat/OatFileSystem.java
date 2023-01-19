@@ -54,7 +54,7 @@ public class OatFileSystem extends GFileSystemBase {
 				ElfConstants.MAGIC_STR.equalsIgnoreCase(e_ident_magic_str);
 
 			if (magicMatch) {
-				ElfHeader elf = new ElfHeader(provider, null);
+				ElfFile elf = new ElfFile(provider, null);
 
 				ElfSymbolTable dynamicSymbolTable = elf.getDynamicSymbolTable();
 				if (dynamicSymbolTable != null) {
@@ -95,7 +95,7 @@ public class OatFileSystem extends GFileSystemBase {
 			monitor.setMaximum(10);
 			monitor.setMessage("Parsing ELF header...");
 			monitor.incrementProgress(1);
-			ElfHeader elf = new ElfHeader(provider, null);
+			ElfFile elf = new ElfFile(provider, null);
 			monitor.incrementProgress(1);
 
 			ElfSection roDataSection = elf.getSection(e -> e.getNameAsString().equals(ElfSectionConstants.dot_rodata));

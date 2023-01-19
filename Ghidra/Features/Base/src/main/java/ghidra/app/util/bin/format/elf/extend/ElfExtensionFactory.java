@@ -18,7 +18,7 @@ package ghidra.app.util.bin.format.elf.extend;
 import java.util.ArrayList;
 import java.util.List;
 
-import ghidra.app.util.bin.format.elf.ElfHeader;
+import ghidra.app.util.bin.format.elf.ElfFile;
 import ghidra.util.classfinder.ClassSearcher;
 
 public final class ElfExtensionFactory {
@@ -27,7 +27,7 @@ public final class ElfExtensionFactory {
 		return new ArrayList<ElfExtension>(ClassSearcher.getInstances(ElfExtension.class));
 	}
 
-	public final static ElfLoadAdapter getLoadAdapter(ElfHeader elf) {
+	public final static ElfLoadAdapter getLoadAdapter(ElfFile elf) {
 		for (ElfExtension handler : getAllExtensions()) {
 			if (handler.canHandle(elf)) {
 				return handler;

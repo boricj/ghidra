@@ -26,14 +26,14 @@ import ghidra.util.exception.NotFoundException;
 public class RISCV_ElfRelocationHandler extends ElfRelocationHandler {
 
 	@Override
-	public boolean canRelocate(ElfHeader elf) {
-		return elf.e_machine() == ElfConstants.EM_RISCV;
+	public boolean canRelocate(ElfFile elf) {
+		return elf.getHeader().e_machine() == ElfConstants.EM_RISCV;
 	}
 
 	@Override
 	public void relocate(ElfRelocationContext elfRelocationContext, ElfRelocation relocation,
 			Address relocationAddress) throws MemoryAccessException, NotFoundException {
-		ElfHeader elf = elfRelocationContext.getElfHeader();
+		ElfFile elf = elfRelocationContext.getElfFile();
 		if (!canRelocate(elf)) {
 			return;
 		}

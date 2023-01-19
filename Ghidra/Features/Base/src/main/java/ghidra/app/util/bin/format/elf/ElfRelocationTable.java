@@ -47,13 +47,13 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 
 	private boolean addendTypeReloc;
 
-	private ElfHeader elfHeader;
+	private ElfFile elf;
 
 	private ElfRelocation[] relocs;
 
 	/**
 	 * Construct an Elf Relocation Table
-	 * @param header elf header
+	 * @param elf elf file
 	 * @param fileSection relocation table section or null if associated with a dynamic table entry
 	 * @param addendTypeReloc true if addend type relocation table
 	 * @param symbolTable associated symbol table (may be null if not applicable)
@@ -61,13 +61,13 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 	 * @param format table format
 	 * @throws IOException if an IO or parse error occurs
 	 */
-	public ElfRelocationTable(ElfHeader header, ElfFileSection fileSection,
+	public ElfRelocationTable(ElfFile elf, ElfFileSection fileSection,
 			boolean addendTypeReloc, ElfSymbolTable symbolTable,
 			ElfSection sectionToBeRelocated, TableFormat format) throws IOException {
 
 		this.fileSection = fileSection;
 		this.addendTypeReloc = addendTypeReloc;
-		this.elfHeader = header;
+		this.elf = elf;
 		this.format = format;
 
 		this.sectionToBeRelocated = sectionToBeRelocated;
@@ -111,11 +111,11 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 
 		List<ElfRelocation> relocations = new ArrayList<>();
 		if (entrySize <= 0) {
-			entrySize = ElfRelocation.getStandardRelocationEntrySize(elfHeader.is64Bit(), addendTypeReloc);
+			entrySize = ElfRelocation.getStandardRelocationEntrySize(elf.is64Bit(), addendTypeReloc);
 		}
 		int nRelocs = (int) (fileSection.getMemorySize() / entrySize);
 		for (int relocationIndex = 0; relocationIndex < nRelocs; ++relocationIndex) {
-			relocations.add(ElfRelocation.createElfRelocation(reader, elfHeader, relocationIndex,
+			relocations.add(ElfRelocation.createElfRelocation(elf, reader, relocationIndex,
 				addendTypeReloc));
 		}
 		return relocations;
@@ -126,7 +126,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 	}
 
 	private long addRelrEntry(long offset, List<ElfRelocation> relocList) throws IOException {
-		relocList.add(ElfRelocation.createElfRelocation(elfHeader, relocList.size(),
+		relocList.add(ElfRelocation.createElfRelocation(elf, relocList.size(),
 			addendTypeReloc, offset, 0, 0));
 		return offset + fileSection.getEntrySize();
 	}
@@ -138,7 +138,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 		while (entry != 0) {
 			entry >>>= 1;
 			if ((entry & 1) != 0) {
-				relocList.add(ElfRelocation.createElfRelocation(elfHeader,
+				relocList.add(ElfRelocation.createElfRelocation(elf,
 					relocList.size(), addendTypeReloc, offset, 0, 0));
 			}
 			offset += entrySize;
@@ -197,7 +197,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 				// group_size
 				long groupSize = LEB128.readAsLong(reader, true);
 				if (groupSize > remainingRelocations) {
-					elfHeader.logError("Group relocation count " + groupSize +
+					elf.logError("Group relocation count " + groupSize +
 						" exceeded total count " + remainingRelocations);
 					break;
 				}
@@ -239,7 +239,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 						}
 						rAddend = addend;
 					}
-					relocations.add(ElfRelocation.createElfRelocation(elfHeader, relocationIndex++,
+					relocations.add(ElfRelocation.createElfRelocation(elf, relocationIndex++,
 						addendTypeReloc, offset, info, rAddend));
 				}
 
@@ -337,7 +337,7 @@ public class ElfRelocationTable implements ByteArrayConverter, StructConverter {
 		}
 
 		ElfRelocation relocationRepresentative =
-			ElfRelocation.createElfRelocation(elfHeader, -1, addendTypeReloc, 0, 0, 0);
+			ElfRelocation.createElfRelocation(elf, -1, addendTypeReloc, 0, 0, 0);
 		DataType relocEntryDataType = relocationRepresentative.toDataType();
 		return new ArrayDataType(relocEntryDataType, (int) (length / entrySize), (int) entrySize);
 	}
