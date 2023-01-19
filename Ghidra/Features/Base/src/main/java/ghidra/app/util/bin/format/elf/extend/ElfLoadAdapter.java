@@ -101,7 +101,7 @@ public class ElfLoadAdapter {
 	 * @param sectionHeaderTypeMap map to which ElfSectionType definitions should be added
 	 */
 	public final void addSectionTypes(
-			HashMap<Integer, ElfSectionType> sectionHeaderTypeMap) {
+			Map<Integer, ElfSectionType> sectionHeaderTypeMap) {
 
 		for (Field field : getClass().getDeclaredFields()) {
 			String name = null;
