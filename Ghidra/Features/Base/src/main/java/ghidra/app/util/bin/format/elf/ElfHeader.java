@@ -58,7 +58,7 @@ public class ElfHeader implements StructConverter, Writeable {
 	int e_phnum; //number of enties in the segment table (may be extended and may not be preserved)
 	short e_shentsize; //size of entries in the section table
 	int e_shnum; //number of enties in the section table (may be extended and may not be preserved)
-	int e_shstrndx; //section index of the section name string table (may be extended and may not be preserved)
+	public int e_shstrndx; //section index of the section name string table (may be extended and may not be preserved)
 
 	private Structure headerStructure;
 

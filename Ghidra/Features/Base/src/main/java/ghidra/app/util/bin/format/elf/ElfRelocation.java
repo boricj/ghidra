@@ -123,7 +123,7 @@ public class ElfRelocation implements ByteArrayConverter, StructConverter {
 	 * @return ELF relocation object
 	 * @throws IOException if an IO or parse error occurs
 	 */
-	static ElfRelocation createElfRelocation(ElfFile elf,
+	public static ElfRelocation createElfRelocation(ElfFile elf,
 			int relocationIndex, boolean withAddend, long r_offset, long r_info, long r_addend)
 			throws IOException {
 		Class<? extends ElfRelocation> elfRelocationClazz = getElfRelocationClass(elf);

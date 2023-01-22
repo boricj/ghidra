@@ -79,7 +79,7 @@ import ghidra.util.StringUtilities;
 
 public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 
-	int sh_name;
+	public int sh_name;
 	int sh_type;
 	long sh_flags;
 	long sh_addr;
