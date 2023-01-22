@@ -133,7 +133,41 @@ public class ElfHeader implements StructConverter, Writeable {
 		}
 	}
 
-	private boolean determineHeaderEndianess(byte ident_data) throws ElfException {
+	public ElfHeader(byte e_ident_class, byte e_ident_data, byte e_ident_version,
+			byte e_ident_osabi, byte e_ident_abiversion, short e_type, short e_machine,
+			int e_version, long e_entry, int e_flags) throws ElfException {
+		this.e_ident_magic_num = ElfConstants.MAGIC_NUM;
+		this.e_ident_magic_str = ElfConstants.MAGIC_STR;
+		this.e_ident_class = e_ident_class;
+		this.e_ident_data = e_ident_data;
+		this.e_ident_version = e_ident_version;
+		this.e_ident_osabi = e_ident_osabi;
+		this.e_ident_abiversion = e_ident_abiversion;
+		this.e_ident_pad = new byte[PAD_LENGTH];
+
+		determineHeaderEndianess(e_ident_data);
+		if (!is32Bit() && !is64Bit()) {
+			throw new ElfException(
+				"Only 32-bit and 64-bit ELF headers are supported (EI_CLASS=0x" +
+					Integer.toHexString(e_ident_class) + ")");
+		}
+
+		this.e_type = e_type;
+		this.e_machine = e_machine;
+		this.e_version = e_version;
+		this.e_entry = e_entry;
+		this.e_phoff = 0;
+		this.e_shoff = 0;
+		this.e_flags = e_flags;
+		this.e_ehsize = (short) (is32Bit() ? 52 : 64);
+		this.e_phentsize = (short) (is32Bit() ? 32 : 56);
+		this.e_phnum = 0;
+		this.e_shentsize = (short) (is32Bit() ? 40 : 64);
+		this.e_shnum = 0;
+		this.e_shstrndx = 0;
+    }
+
+    private boolean determineHeaderEndianess(byte ident_data) throws ElfException {
 		boolean hasLittleEndianHeaders = true;
 
 		if (ident_data == ElfConstants.ELF_DATA_BE) {
@@ -282,6 +316,14 @@ public class ElfHeader implements StructConverter, Writeable {
 	 */
 	public long e_shoff() {
 		return e_shoff;
+	}
+
+	/**
+	 * 
+	 * @param shoff New section header offset
+	 */
+	public void setSectionHeaderOffset(long shoff) {
+		e_shoff = shoff;
 	}
 
 	/**

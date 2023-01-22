@@ -94,9 +94,6 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 
 	private ElfFile elf;
 	private String name;
-	private byte[] data;
-	private boolean modified = false;
-	private boolean bytesChanged = false;
 
 	public ElfSection(ElfFile elf, BinaryReader reader)
 			throws IOException {
@@ -142,6 +139,20 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 			provider = new UnlimitedByteProviderWrapper(reader.getByteProvider(), sh_offset, sh_size);
 		}
 		this.reader = new BinaryReader(provider, reader.isLittleEndian());
+	}
+
+	public ElfSection(ElfFile elf, String name, int type, long flags, int link, int info,
+			long addressAlignment, long entrySize, ByteProvider data) {
+		this.sh_type = type;
+		this.sh_flags = flags;
+		this.sh_link = link;
+		this.sh_info = info;
+		this.sh_addralign = addressAlignment;
+		this.sh_entsize = entrySize;
+
+		this.elf = elf;
+		this.name = name;
+		this.reader = new BinaryReader(data, elf.isLittleEndian());
 	}
 
 	/**
@@ -410,24 +421,6 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	}
 
 	/**
-	 * Returns the actual data bytes from the file for this section
-	 * @return the actual data bytes from the file for this section
-	 * @throws IOException if an I/O error occurs while reading the file
-	 */
-	public byte[] getData() throws IOException {
-		if (sh_type == ElfSectionConstants.SHT_NOBITS) {
-			return new byte[0];
-		}
-		if (data != null) {
-			return data;
-		}
-		if (reader == null) {
-			throw new UnsupportedOperationException("This ElfSection does not have a reader");
-		}
-		return reader.readByteArray(sh_offset, (int) sh_size);
-	}
-
-	/**
 	 * Returns an input stream starting at offset into
 	 * the byte provider.
 	 * NOTE: Do not use this method if you have called setData().
@@ -450,57 +443,12 @@ public class ElfSection implements ElfFileSection, StructConverter, Writeable {
 	}
 
 	/**
-	 * Sets the actual data bytes for this section.
-	 * If the data is larger than the previous data, then 
-	 * the offset is set to -1 and the section will
-	 * need to be relocated.
-	 * @param data the new data byte for this section
-	 */
-	public void setData(byte[] data) {
-		bytesChanged = true;
-		if (sh_type == ElfSectionConstants.SHT_NOBITS) {
-			throw new IllegalArgumentException("Cannot set data on section with type: SHT_NOBITS");
-		}
-		this.data = data;
-		//if the data has been increased, then this section
-		//will need to be relocated in the file
-		if (data.length > sh_size) {
-			modified = true;
-			sh_offset = -1;
-		}
-		sh_size = data.length;
-	}
-
-	/**
-	 * Returns true if the data bytes have changed for this section.
-	 * @return true if the data bytes have changed for this section
-	 */
-	public boolean isBytesChanged() {
-		return bytesChanged;
-	}
-
-	/**
-	 * Returns true if this section has been modified.
-	 * A modified section requires that a new segment
-	 * get created.
-	 * @return true if this section has been modified
-	 */
-	public boolean isModified() {
-		return modified;
-	}
-
-	/**
 	 * Sets the offset of this section. The offset is the actual byte
 	 * offset into the file.
 	 * @param offset the file byte offset
 	 * @throws IOException if an I/O occurs
 	 */
 	public void setOffset(long offset) throws IOException {
-		modified = true;
-		/*if we are overriding the offset, we must cache the section data*/
-		if (data == null) {
-			data = getData();
-		}
 		this.sh_offset = offset;
 	}
 

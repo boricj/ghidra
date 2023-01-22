@@ -98,6 +98,16 @@ public class ElfFile {
 	}
 
 	/**
+	 * Create an empty ELF file.
+	 */
+	public ElfFile(byte e_ident_class, byte e_ident_data, byte e_ident_version, byte e_ident_osabi,
+			byte e_ident_abiversion, short e_type, short e_machine, int e_version, long e_entry,
+			int e_flags) throws ElfException {
+		this.header = new ElfHeader(e_ident_class, e_ident_data, e_ident_version, e_ident_osabi,
+			e_ident_abiversion, e_type, e_machine, e_version, e_entry, e_flags);
+    }
+
+    /**
 	 * An helper class to parse the header, segments and sections from
 	 * an Executable and Linking Format (ELF) file. 
 	 */
@@ -854,6 +864,30 @@ public class ElfFile {
 		return sections.stream().filter(predicate).findFirst().orElse(null);
 	}
 
+	public ElfSection addSection(String name, int type, long flags, ElfSection link,
+		int info, long addressAlignment, long entrySize, ByteProvider data) throws IOException {
+		int linkNum = link != null ? sections.indexOf(link) : 0;
+
+		ElfSection section = new ElfSection(this, name, type, flags,
+				linkNum, info, addressAlignment, entrySize, data);
+
+		if (type == ElfSectionConstants.SHT_STRTAB) {
+			stringTables.add(new ElfStringTable(this, section));
+		}
+		else if (type == ElfSectionConstants.SHT_SYMTAB) {
+			ElfStringTable stringTable = getStringTable(link);
+			symbolTables.add(new ElfSymbolTable(this, section, stringTable, null, false));
+		}
+		else if (type == ElfSectionConstants.SHT_REL) {
+			ElfSymbolTable symbolTable = getSymbolTable(link);
+			relocationTables.add(new ElfRelocationTable(this, section, false, symbolTable, null, ElfRelocationTable.TableFormat.DEFAULT));
+		}
+
+		sections.add(section);
+		header.e_shnum += 1;
+
+		return section;
+	}
 	/**
 	 * Returns the segments as defined in this ELF file.
 	 * @return the segments as defined in this ELF file
