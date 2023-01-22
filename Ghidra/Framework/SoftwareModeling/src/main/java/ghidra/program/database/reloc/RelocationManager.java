@@ -128,6 +128,20 @@ public class RelocationManager implements RelocationTable, ManagerDB {
 	}
 
 	@Override
+	public void clear() {
+		lock.acquire();
+		try {
+			adapter.clear();
+		}
+		catch (IOException e) {
+			program.dbError(e);
+		}
+		finally {
+			lock.release();
+		}
+	}
+
+	@Override
 	public boolean hasRelocation(Address addr) {
 		lock.acquire();
 		try {

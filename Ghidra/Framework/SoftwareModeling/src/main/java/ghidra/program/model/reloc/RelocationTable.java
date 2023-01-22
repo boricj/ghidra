@@ -47,6 +47,11 @@ public interface RelocationTable {
 	public Relocation add(Address addr, int type, long[] values, byte[] bytes, String symbolName);
 
 	/**
+	 * Clears the relocation table.
+	 */
+	public void clear();
+
+	/**
 	 * Returns the ordered list of relocations which have been defined for the specified address.
 	 * In most cases there will be one or none, but in some cases multiple relocations may be
 	 * applied to a single address. 

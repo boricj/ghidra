@@ -48,6 +48,11 @@ class RelocationDBAdapterNoTable extends RelocationDBAdapter {
 	}
 
 	@Override
+	void clear() throws IOException {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	int getRecordCount() {
 		return 0;
 	}

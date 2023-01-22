@@ -148,6 +148,11 @@ abstract class RelocationDBAdapter {
 			throws IOException;
 
 	/**
+	 * Remove all relocation records.
+	 */
+	abstract void clear() throws IOException;
+
+	/**
 	 * Iterator over all records in address order.
 	 * @return record iterator
 	 * @throws IOException if a database error occurs

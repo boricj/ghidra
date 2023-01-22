@@ -63,6 +63,11 @@ class RelocationDBAdapterV3 extends RelocationDBAdapter {
 	}
 
 	@Override
+	void clear() throws IOException {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	int getRecordCount() {
 		return relocTable.getRecordCount();
 	}
