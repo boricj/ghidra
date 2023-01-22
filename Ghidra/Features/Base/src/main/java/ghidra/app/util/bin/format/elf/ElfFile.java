@@ -922,7 +922,7 @@ public class ElfFile {
 	 */
 	public ElfStringTable getStringTable(ElfSection section) {
 		for (ElfStringTable stringTable : stringTables) {
-			if (stringTable.getFileSection().getFileOffset() == section.getFileOffset()) {
+			if (stringTable.getFileSection() == section) {
 				return stringTable;
 			}
 		}
@@ -948,15 +948,12 @@ public class ElfFile {
 	/**
 	 * Returns the symbol table associated to the specified section.
 	 * Or, null if one does not exist.
-	 * @param symbolTableSection symbol table section
+	 * @param section symbol table section
 	 * @return the symbol table associated to the specified section
 	 */
-	public ElfSymbolTable getSymbolTable(ElfSection symbolTableSection) {
-		if (symbolTableSection == null) {
-			return null;
-		}
+	public ElfSymbolTable getSymbolTable(ElfSection section) {
 		for (ElfSymbolTable symbolTable : symbolTables) {
-			if (symbolTable.getFileSection().getFileOffset() == symbolTableSection.getFileOffset()) {
+			if (symbolTable.getFileSection() == section) {
 				return symbolTable;
 			}
 		}
@@ -974,11 +971,16 @@ public class ElfFile {
 	/**
 	 * Returns the relocation table associated to the specified section,
 	 * or null if one does not exist.
-	 * @param relocSection section corresponding to relocation table
+	 * @param section section corresponding to relocation table
 	 * @return the relocation table associated to the specified section
 	 */
-	public ElfRelocationTable getRelocationTable(ElfSection relocSection) {
-		return getRelocationTableAtOffset(relocSection.getFileOffset());
+	public ElfRelocationTable getRelocationTable(ElfSection section) {
+		for (ElfRelocationTable relocationTable : relocationTables) {
+			if (relocationTable.getFileSection() == section) {
+				return relocationTable;
+			}
+		}
+		return null;
 	}
 
 	/**
