@@ -266,7 +266,7 @@ public class ElfSymbolTable implements ByteArrayConverter, StructConverter {
 	 */
 	@Override
 	public byte[] toBytes(DataConverter dc) {
-		byte[] bytes = null;
+		byte[] bytes = new byte[0];
 		int index = 0;
 		for (int i = 0; i < symbols.length; i++) {
 			byte[] symbytes = symbols[i].toBytes(dc);
