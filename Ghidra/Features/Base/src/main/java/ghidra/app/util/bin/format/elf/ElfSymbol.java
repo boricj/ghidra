@@ -117,6 +117,24 @@ public class ElfSymbol implements ByteArrayConverter {
 		return new ElfSymbol(elf, "", 0, 0, 0, (byte) 0, (byte) 0, (short) 0, 0, null);
 	}
 
+	public static ElfSymbol createDefinedSymbol(ElfFile elf, ElfSymbolTable symbolTable,
+			String nameAsString, int name, long value, long size, byte type, byte binding, byte visibility, short sectionHeaderIndex,
+			int symbolIndex) {
+		byte info = (byte) (type | (binding << 4));
+		byte other = visibility;
+
+		return new ElfSymbol(elf, nameAsString, name, value, size, info, other, sectionHeaderIndex,
+			symbolIndex, symbolTable);
+	}
+
+	public static ElfSymbol createUndefinedSymbol(ElfFile elf, ElfSymbolTable symbolTable,
+			String nameAsString, int name, int symbolIndex) {
+		byte info = (byte) (STT_NOTYPE | (STB_GLOBAL << 4));
+
+		return new ElfSymbol(elf, nameAsString, name, 0, 0, info, STV_DEFAULT, (short) 0,
+			symbolIndex, symbolTable);
+	}
+
 	private ElfSymbol(ElfFile elf, String nameAsString, int name, long value, long size,
 			byte info, byte other, short sectionHeaderIndex, int symbolIndex,
 			ElfSymbolTable symbolTable) {
