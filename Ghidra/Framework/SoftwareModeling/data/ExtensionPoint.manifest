@@ -1,5 +1,6 @@
 AnnotationHandler
 RelocationHandler
+RelocationTableSynthesizer
 LanguageTranslator
 Constraint
 DataType
