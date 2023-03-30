@@ -20,13 +20,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ghidra.app.util.bin.BinaryReader;
+import ghidra.app.util.bin.ByteArrayConverter;
 import ghidra.program.model.data.*;
+import ghidra.util.DataConverter;
 import ghidra.util.Msg;
 
 /**
  * A container class to hold ELF relocations.
  */
-public class ElfRelocationTable implements ElfFileSection {
+public class ElfRelocationTable implements ElfFileSection, ByteArrayConverter {
 
 	public enum TableFormat {
 		DEFAULT, ANDROID, RELR;
@@ -306,6 +308,18 @@ public class ElfRelocationTable implements ElfFileSection {
 	 */
 	public ElfSymbolTable getAssociatedSymbolTable() {
 		return symbolTable;
+	}
+
+	@Override
+	public byte[] toBytes(DataConverter dc) {
+		byte[] bytes = new byte[relocs.length * relocs[0].sizeof()];
+		int index = 0;
+		for (ElfRelocation reloc : relocs) {
+			byte[] relocBytes = reloc.toBytes(dc);
+			System.arraycopy(relocBytes, 0, bytes, index, relocBytes.length);
+			index += relocBytes.length;
+		}
+		return bytes;
 	}
 
 	@Override
