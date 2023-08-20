@@ -1,3 +1,5 @@
+**⚠ This Ghidra branch is obsoleted by https://github.com/boricj/ghidra-unlinker-extension**
+
 <img src="Ghidra/Features/Base/src/main/resources/images/GHIDRA_3.png" width="400">
 
 # Ghidra Software Reverse Engineering Framework
