@@ -343,32 +343,30 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
         for (Integer i = 0; i < this.symTab.size(); i++) {
             UnixAoutSymbolTableEntry symTabEntry = this.symTab.elementAt(i);
             try {
-                if (symTabEntry.value != 0) {
-                    if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_TEXT) {
-                        if (symTabEntry.isExt) {
-                            // Save the entry point to this function in a list. Disassembly should
-							// wait until after we've processed the relocation tables.
-                            Address funcAddr = this.textAddrSpace.getAddress(symTabEntry.value);
-                            this.localFunctions.put(funcAddr, symTabEntry.name);
-                        }
-                    } else if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_DATA) {
-                        this.api.createLabel(this.dataAddrSpace.getAddress(symTabEntry.value),
-							symTabEntry.name, this.namespace, true, SourceType.IMPORTED);
-
-                    } else if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_BSS) {
-                        // Save the symbols that are explicitly identified as being in .bss
-                        // to a list so that they can be labeled later (after we actually
-                        // create the .bss block, which must wait until after we total all
-                        // the space used by N_UNDF symbols; see below.)
-                        this.bssSymbols.put(symTabEntry.name, symTabEntry.value);
-
-                    } else if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_UNDF) {
-                        // This is a special case given by the A.out spec: if the linker cannot find
-                        // this symbol in any of the other binary files, then the fact that it is
-                        // marked as N_UNDF but has a non-zero value means that its value should be
-                        // interpreted as a size, and the linker should reserve space in .bss for it.
-                        this.possibleBssSymbols.put(symTabEntry.name, symTabEntry.value);
+                if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_TEXT) {
+                    if (symTabEntry.isExt) {
+                        // Save the entry point to this function in a list. Disassembly should
+                        // wait until after we've processed the relocation tables.
+                        Address funcAddr = this.textAddrSpace.getAddress(symTabEntry.value);
+                        this.localFunctions.put(funcAddr, symTabEntry.name);
                     }
+                } else if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_DATA) {
+                    this.api.createLabel(this.dataAddrSpace.getAddress(symTabEntry.value),
+                        symTabEntry.name, this.namespace, true, SourceType.IMPORTED);
+
+                } else if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_BSS) {
+                    // Save the symbols that are explicitly identified as being in .bss
+                    // to a list so that they can be labeled later (after we actually
+                    // create the .bss block, which must wait until after we total all
+                    // the space used by N_UNDF symbols; see below.)
+                    this.bssSymbols.put(symTabEntry.name, symTabEntry.value);
+
+                } else if (symTabEntry.type == UnixAoutSymbolTableEntry.SymbolType.N_UNDF) {
+                    // This is a special case given by the A.out spec: if the linker cannot find
+                    // this symbol in any of the other binary files, then the fact that it is
+                    // marked as N_UNDF but has a non-zero value means that its value should be
+                    // interpreted as a size, and the linker should reserve space in .bss for it.
+                    this.possibleBssSymbols.put(symTabEntry.name, symTabEntry.value);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
