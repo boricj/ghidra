@@ -554,7 +554,7 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
         this.log = log;
         this.api = new FlatProgramAPI(program, monitor);
         this.header = new UnixAoutHeader(provider, !this.bigEndian);
-        this.filename = provider.getFile().getName();
+        this.filename = provider.getFSRL().getName();
         this.isOverlay = (header.getExecutableType() == ExecutableType.OMAGIC);
 
         try {
