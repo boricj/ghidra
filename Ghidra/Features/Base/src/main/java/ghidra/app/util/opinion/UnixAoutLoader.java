@@ -214,7 +214,7 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
             try {
                 InputStream stream = provider.getInputStream(fileOffset);
                 this.textBlock = this.program.getMemory().createInitializedBlock(
-					this.filename + ".text", address, stream, size, monitor, this.isOverlay);
+                        ".text", address, stream, size, monitor, this.isOverlay);
                 this.textBlock.setRead(true);
                 this.textBlock.setWrite(false);
                 this.textBlock.setExecute(true);
@@ -243,7 +243,7 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
             try {
                 InputStream stream = provider.getInputStream(fileOffset);
                 this.dataBlock = program.getMemory().createInitializedBlock(
-                                     this.filename + ".data", address, stream, size, monitor, this.isOverlay);
+                        ".data", address, stream, size, monitor, this.isOverlay);
                 this.dataBlock.setRead(true);
                 this.dataBlock.setWrite(true);
                 this.dataBlock.setExecute(false);
@@ -291,7 +291,7 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
                 this.program.getAddressFactory().getDefaultAddressSpace().getAddress(bssAddrVal);
             try {
                 this.bssBlock = this.program.getMemory().createUninitializedBlock(
-                    this.filename + ".bss", bssAddr, totalBssSize, this.isOverlay);
+                        ".bss", bssAddr, totalBssSize, this.isOverlay);
                 this.bssAddrSpace = bssBlock.getStart().getAddressSpace();
                 this.bssBlock.setRead(true);
                 this.bssBlock.setWrite(true);
