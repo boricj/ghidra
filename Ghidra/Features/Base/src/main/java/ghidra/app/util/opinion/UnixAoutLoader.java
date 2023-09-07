@@ -366,7 +366,9 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
                     // this symbol in any of the other binary files, then the fact that it is
                     // marked as N_UNDF but has a non-zero value means that its value should be
                     // interpreted as a size, and the linker should reserve space in .bss for it.
-                    this.possibleBssSymbols.put(symTabEntry.name, symTabEntry.value);
+                    if (symTabEntry.value > 0) {
+                        this.possibleBssSymbols.put(symTabEntry.name, symTabEntry.value);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
