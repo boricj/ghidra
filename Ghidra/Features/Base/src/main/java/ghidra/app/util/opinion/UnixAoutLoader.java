@@ -41,6 +41,8 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.mem.MemoryConflictException;
+import ghidra.program.model.reloc.Relocation;
+import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.SourceType;
@@ -376,6 +378,67 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
         }
     }
 
+    protected void processRelocation(UnixAoutRelocationTableEntry relocationEntry, UnixAoutSymbolTableEntry symbolEntry,
+            MemoryBlock block) {
+        Address relocAddr = block.getStart().add(relocationEntry.address);
+        Relocation.Status relocStatus = Relocation.Status.APPLIED;
+        long[] relocValues = new long[] { relocationEntry.symbolNum };
+        byte[] relocBytes = new byte[relocationEntry.pointerLength];
+        try {
+            block.getBytes(relocAddr, relocBytes);
+        } catch (MemoryAccessException e) {
+            e.printStackTrace();
+        }
+
+        List<Function> funcs = this.api.getCurrentProgram().getListing().getGlobalFunctions(symbolEntry.name);
+        List<Symbol> symbolsGlobal = this.api.getSymbols(symbolEntry.name, null);
+        List<Symbol> symbolsLocal = this.api.getSymbols(symbolEntry.name, namespace);
+
+        if (funcs.size() > 0) {
+            Address funcAddr = funcs.get(0).getEntryPoint();
+            fixAddress(block, relocAddr, funcAddr,
+                        relocationEntry.pcRelativeAddressing, this.bigEndian,
+                        relocationEntry.pointerLength);
+
+        } else if (symbolsGlobal.size() > 0) {
+            Address globalSymbolAddr = symbolsGlobal.get(0).getAddress();
+            fixAddress(block, relocAddr, globalSymbolAddr,
+                        relocationEntry.pcRelativeAddressing, this.bigEndian,
+                        relocationEntry.pointerLength);
+
+        } else if (symbolsLocal.size() > 0) {
+            Address localSymbolAddr = symbolsLocal.get(0).getAddress();
+            fixAddress(block, relocAddr, localSymbolAddr,
+                        relocationEntry.pcRelativeAddressing, this.bigEndian,
+                        relocationEntry.pointerLength);
+
+        } else if (this.possibleBssSymbols.containsKey(symbolEntry.name)) {
+            try {
+                Address bssSymbolAddress =
+                    this.bssBlock.getStart().getAddressSpace().getAddress(bssLocation);
+                long bssSymbolSize = this.possibleBssSymbols.get(symbolEntry.name);
+                this.api.createLabel(bssSymbolAddress, symbolEntry.name, this.namespace,
+                                        true, SourceType.IMPORTED);
+                fixAddress(block, relocAddr, bssSymbolAddress,
+                            relocationEntry.pcRelativeAddressing, this.bigEndian,
+                            relocationEntry.pointerLength);
+                this.program.getReferenceManager().addMemoryReference(relocAddr,
+                        bssSymbolAddress, RefType.DATA, SourceType.IMPORTED, 0);
+                this.bssLocation += bssSymbolSize;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else {
+            this.log.appendMsg("Symbol '" + symbolEntry.name +
+                "' was not found and was not a candidate for allocation in .bss.");
+            relocStatus = Relocation.Status.FAILURE;
+        }
+
+        RelocationTable relocationTable = this.api.getCurrentProgram().getRelocationTable();
+        relocationTable.add(relocAddr, relocStatus, relocationEntry.flags, relocValues, relocBytes, symbolEntry.name);
+    }
+
     /**
      * Processes the text relocation table by fixing addresses based on the true location of each
      * symbol.
@@ -386,11 +449,9 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
             UnixAoutRelocationTableEntry relocationEntry = this.textRelocTab.elementAt(i);
             if (relocationEntry.symbolNum < symTab.size()) {
 
-                UnixAoutSymbolTableEntry symbolEntry =
-                    this.symTab.elementAt((int) relocationEntry.symbolNum);
+                UnixAoutSymbolTableEntry symbolEntry = this.symTab.elementAt((int) relocationEntry.symbolNum);
                 AddressSpace addrSpace = this.textBlock.getStart().getAddressSpace();
-                Address relocAddr =
-                    addrSpace.getAddress(relocationEntry.address + this.header.getTextAddr());
+                Address relocAddr = addrSpace.getAddress(relocationEntry.address + this.header.getTextAddr());
 
                 // If this symbol's N_EXT flag is clear, then we didn't mark it as a function when
                 // we were processing the symbol table (above). This is because special symbols like
@@ -404,51 +465,7 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
                 }
 
                 if (relocationEntry.extern && this.textBlock.contains(relocAddr)) {
-
-                    List<Function> funcs = this.api.getCurrentProgram().getListing().
-                                           getGlobalFunctions(symbolEntry.name);
-                    List<Symbol> symbolsGlobal = this.api.getSymbols(symbolEntry.name, null);
-                    List<Symbol> symbolsLocal = this.api.getSymbols(symbolEntry.name, namespace);
-
-                    if (funcs.size() > 0) {
-                        Address funcAddr = funcs.get(0).getEntryPoint();
-                        fixAddress(this.textBlock, relocAddr, funcAddr,
-                                   relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                   relocationEntry.pointerLength);
-
-                    } else if (symbolsGlobal.size() > 0) {
-                        Address globalSymbolAddr = symbolsGlobal.get(0).getAddress();
-                        fixAddress(this.textBlock, relocAddr, globalSymbolAddr,
-                                   relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                   relocationEntry.pointerLength);
-
-                    } else if (symbolsLocal.size() > 0) {
-                        Address localSymbolAddr = symbolsLocal.get(0).getAddress();
-                        fixAddress(this.textBlock, relocAddr, localSymbolAddr,
-                                   relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                   relocationEntry.pointerLength);
-
-                    } else if (this.possibleBssSymbols.containsKey(symbolEntry.name)) {
-                        try {
-                            Address bssSymbolAddress =
-                                this.bssBlock.getStart().getAddressSpace().getAddress(bssLocation);
-                            long bssSymbolSize = this.possibleBssSymbols.get(symbolEntry.name);
-                            this.api.createLabel(bssSymbolAddress, symbolEntry.name, this.namespace,
-                                                 true, SourceType.IMPORTED);
-                            fixAddress(this.textBlock, relocAddr, bssSymbolAddress,
-                                       relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                       relocationEntry.pointerLength);
-                            this.program.getReferenceManager().addMemoryReference(relocAddr,
-                                    bssSymbolAddress, RefType.DATA, SourceType.IMPORTED, 0);
-                            this.bssLocation += bssSymbolSize;
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        this.log.appendMsg("Symbol '" + symbolEntry.name +
-                            "' was not found and was not a candidate for allocation in .bss.");
-                    }
+                    processRelocation(relocationEntry, symbolEntry, textBlock);
                 }
             } else {
                 this.log.appendMsg("Symbol number " + relocationEntry.symbolNum +
@@ -467,57 +484,12 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
             UnixAoutRelocationTableEntry relocationEntry = this.dataRelocTab.elementAt(i);
             if (relocationEntry.symbolNum < symTab.size()) {
 
-                UnixAoutSymbolTableEntry symbolEntry =
-                    this.symTab.elementAt((int) relocationEntry.symbolNum);
+                UnixAoutSymbolTableEntry symbolEntry = this.symTab.elementAt((int) relocationEntry.symbolNum);
                 AddressSpace addrSpace = this.dataBlock.getStart().getAddressSpace();
-                Address relocAddr =
-                    addrSpace.getAddress(relocationEntry.address + this.header.getDataAddr());
+                Address relocAddr = addrSpace.getAddress(relocationEntry.address + this.header.getDataAddr());
 
                 if (this.dataBlock.contains(relocAddr)) {
-
-                    List<Function> funcs = this.api.getCurrentProgram().getListing().
-                                           getGlobalFunctions(symbolEntry.name);
-                    List<Symbol> symbolsGlobal = this.api.getSymbols(symbolEntry.name, null);
-                    List<Symbol> symbolsLocal = this.api.getSymbols(symbolEntry.name, namespace);
-
-                    if (funcs.size() > 0) {
-                        Address funcAddr = funcs.get(0).getEntryPoint();
-                        fixAddress(this.dataBlock, relocAddr, funcAddr,
-                                   relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                   relocationEntry.pointerLength);
-
-                    } else if (symbolsGlobal.size() > 0) {
-                        Address globalSymbolAddr = symbolsGlobal.get(0).getAddress();
-                        fixAddress(this.dataBlock, relocAddr, globalSymbolAddr,
-                                   relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                   relocationEntry.pointerLength);
-
-                    } else if (symbolsLocal.size() > 0) {
-                        Address localSymbolAddr = symbolsLocal.get(0).getAddress();
-                        fixAddress(this.dataBlock, relocAddr, localSymbolAddr,
-                                   relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                   relocationEntry.pointerLength);
-
-                    } else if (this.possibleBssSymbols.containsKey(symbolEntry.name)) {
-                        try {
-                            Address bssSymbolAddress =
-                                this.bssBlock.getStart().getAddressSpace().getAddress(bssLocation);
-                            this.api.createLabel(bssSymbolAddress, symbolEntry.name, namespace,
-												 true, SourceType.IMPORTED);
-                            fixAddress(this.dataBlock, relocAddr, bssSymbolAddress,
-                                       relocationEntry.pcRelativeAddressing, this.bigEndian,
-                                       relocationEntry.pointerLength);
-                            this.program.getReferenceManager().addMemoryReference(relocAddr,
-                                    bssSymbolAddress, RefType.DATA, SourceType.IMPORTED, 0);
-                            this.bssLocation += this.possibleBssSymbols.get(symbolEntry.name);
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        this.log.appendMsg("Symbol '" + symbolEntry.name +
-                            "' was not found and was not a candidate for allocation in .bss.");
-                    }
+                    processRelocation(relocationEntry, symbolEntry, dataBlock);
                 }
             } else {
                 this.log.appendMsg("Symbol number " + relocationEntry.symbolNum +

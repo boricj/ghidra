@@ -23,6 +23,7 @@ package ghidra.app.util.bin.format.unixaout;
 public class UnixAoutRelocationTableEntry {
     public long address;
     public long symbolNum;
+    public byte flags;
     public boolean pcRelativeAddressing;
     public byte pointerLength;
     public boolean extern;
@@ -42,6 +43,7 @@ public class UnixAoutRelocationTableEntry {
 
         if (bigEndian) {
             this.symbolNum = ((flags & 0xFFFFFF00) >> 8);
+            this.flags = (byte) (flags & 0xff);
             this.pcRelativeAddressing = ((flags & 0x80) != 0);
             this.pointerLength = (byte) (1 << ((flags & 0x60) >> 5));
             this.extern = ((flags & 0x10) != 0);
@@ -52,6 +54,7 @@ public class UnixAoutRelocationTableEntry {
         } else {
             this.symbolNum = (flags & 0x00FFFFFF);
             final byte hibyte = (byte) ((flags & 0xFF000000) >> 24);
+            this.flags = hibyte;
             this.pcRelativeAddressing = ((hibyte & 0x01) != 0);
             this.pointerLength = (byte) (1 << ((hibyte & 0x06) >> 1));
             this.extern = ((hibyte & 0x08) != 0);
