@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ghidra.app.util.bin.format.aout;
+package ghidra.app.util.bin.format.unixaout;
 
 /**
  * Represents the content of a single entry in the symbol table format used by
@@ -22,7 +22,7 @@ package ghidra.app.util.bin.format.aout;
  */
 public class UnixAoutSymbolTableEntry {
 
-    enum SymbolType { N_UNDF, N_ABS, N_TEXT, N_DATA, N_BSS, N_FN, N_EXT, UNKNOWN }
+    public enum SymbolType { N_UNDF, N_ABS, N_TEXT, N_DATA, N_BSS, N_FN, N_EXT, UNKNOWN }
 
     public long nameStringOffset;
     public String name;

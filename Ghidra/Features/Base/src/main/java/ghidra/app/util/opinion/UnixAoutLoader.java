@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ghidra.app.util.bin.format.aout;
+package ghidra.app.util.opinion;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,13 +23,13 @@ import ghidra.app.util.Option;
 import ghidra.app.util.OptionException;
 import ghidra.app.util.bin.BinaryReader;
 import ghidra.app.util.bin.ByteProvider;
-import ghidra.app.util.bin.format.aout.UnixAoutHeader.ExecutableType;
+import ghidra.app.util.bin.format.unixaout.UnixAoutHeader;
+import ghidra.app.util.bin.format.unixaout.UnixAoutHeader.ExecutableType;
+import ghidra.app.util.bin.format.unixaout.UnixAoutRelocationTableEntry;
+import ghidra.app.util.bin.format.unixaout.UnixAoutSymbolTableEntry;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.app.util.opinion.AbstractProgramWrapperLoader;
-import ghidra.app.util.opinion.Loader;
-import ghidra.app.util.opinion.LoadSpec;
-import ghidra.framework.store.LockException;
 import ghidra.framework.model.DomainObject;
+import ghidra.framework.store.LockException;
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressFactory;

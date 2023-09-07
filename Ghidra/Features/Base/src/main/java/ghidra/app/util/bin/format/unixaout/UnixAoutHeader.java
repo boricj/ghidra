@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ghidra.app.util.bin.format.aout;
+package ghidra.app.util.bin.format.unixaout;
 
 import java.io.IOException;
 
@@ -23,7 +23,7 @@ import ghidra.app.util.bin.ByteProvider;
 
 public class UnixAoutHeader {
 
-    enum ExecutableType {
+    public enum ExecutableType {
         OMAGIC, NMAGIC, ZMAGIC, QMAGIC, CMAGIC, UNKNOWN
     }
 

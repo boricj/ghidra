@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ghidra.app.util.bin.format.aout;
+package ghidra.app.util.bin.format.unixaout;
 
 public class UnixAoutMachineType {
 

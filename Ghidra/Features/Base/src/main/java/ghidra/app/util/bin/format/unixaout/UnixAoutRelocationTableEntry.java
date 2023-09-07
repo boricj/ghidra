@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ghidra.app.util.bin.format.aout;
+package ghidra.app.util.bin.format.unixaout;
 
 /**
  * Represents the content of a single entry in the relocation table format used
