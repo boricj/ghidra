@@ -21,7 +21,7 @@ package ghidra.feature.vt.api.main;
  *
  */
 public enum VTAssociationType {
-	FUNCTION("Function"), DATA("Data");
+	FUNCTION("Function"), DATA("Data"), MEMORY_BLOCK("Memory Block");
 
 	private final String displayName;
 

@@ -324,8 +324,8 @@ public class VTMarkupItemsTableProvider extends ComponentProviderAdapter
 
 			String sessionName = controller.getVersionTrackingSessionName();
 			StringBuffer buffy = new StringBuffer();
-			buffy.append("[Session: ").append(sessionName).append("] ");
-			buffy.append('-').append(markupItemsTableModel.getRowCount()).append(" markup items");
+			buffy.append("[Session: ").append(sessionName).append("]");
+			buffy.append(" - ").append(markupItemsTableModel.getRowCount()).append(" markup items");
 			if (filteredCount != unfilteredCount) {
 				buffy.append(" (of ")
 						.append(markupItemsTableModel.getUnfilteredRowCount())
