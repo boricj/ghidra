@@ -464,7 +464,7 @@ public class UnixAoutLoader extends AbstractProgramWrapperLoader {
                     this.localFunctions.put(funcAddr, symbolEntry.name);
                 }
 
-                if (relocationEntry.extern && this.textBlock.contains(relocAddr)) {
+                if (this.textBlock.contains(relocAddr)) {
                     processRelocation(relocationEntry, symbolEntry, textBlock);
                 }
             } else {
